@@ -17,7 +17,7 @@ if elapsed_time > REFRESH_INTERVAL:
     st.experimental_rerun()
 else:
     remaining = REFRESH_INTERVAL - int(elapsed_time)
-    st.markdown(f"<p style='color: gray; font-size: 12px;'>⏳ Auto-refreshing in {remaining}s...</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: gray; font-size: 12px;'>\u23f3 Auto-refreshing in {remaining}s...</p>", unsafe_allow_html=True)
 
 # Styling
 st.markdown("""
@@ -45,16 +45,14 @@ st.markdown("""
 
 # Title
 st.markdown('<div class="big-title">🧠 ICU AI Live Dashboard</div>', unsafe_allow_html=True)
-st.caption("12 ICU conditions · Live vitals · Trends for all vital signs · Refreshes every 5 seconds")
+st.caption("12 ICU conditions · Live vitals · Combined trends · Refreshes every 5 seconds")
 
-# ICU conditions
 icu_conditions = [
     "Sepsis", "ARDS", "Cardiac Arrest", "Kidney Injury", "Liver Failure",
     "Pulmonary Embolism", "Stroke", "Hypoglycemia", "Hyperkalemia",
     "Hemorrhage", "Pneumonia", "Shock"
 ]
 
-# Simulated vitals generator
 def simulate_vitals():
     return {
         "HR": random.randint(60, 140),
@@ -65,7 +63,6 @@ def simulate_vitals():
         "Lactate": round(random.uniform(0.5, 4.5), 2)
     }
 
-# Alert status
 def alert_level(vitals):
     if vitals["Temp"] > 38.5 and vitals["HR"] > 110 and vitals["Lactate"] > 2.5:
         return "🔴 High", "alert-high"
@@ -74,28 +71,26 @@ def alert_level(vitals):
     else:
         return "🟢 Low", "alert-low"
 
-# Vital trends chart
-def plot_vital_trends(vitals):
-    fig, axs = plt.subplots(1, 5, figsize=(12, 1.8))
-    vitals_trend = {
+def plot_combined_trends(vitals):
+    time_axis = list(range(15))
+    data = {
         "HR": np.cumsum(np.random.normal(0, 0.5, 15)) + vitals["HR"],
         "Temp": np.cumsum(np.random.normal(0, 0.05, 15)) + vitals["Temp"],
         "RR": np.cumsum(np.random.normal(0, 0.2, 15)) + vitals["RR"],
         "SpO2": np.cumsum(np.random.normal(0, 0.3, 15)) + vitals["SpO2"],
         "Lactate": np.cumsum(np.random.normal(0, 0.05, 15)) + vitals["Lactate"]
     }
+    colors = {"HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue", "Lactate": "purple"}
 
-    for ax, (label, trend) in zip(axs, vitals_trend.items()):
-        ax.plot(trend, linewidth=2)
-        ax.set_title(label, fontsize=10)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.grid(False)
-        ax.set_facecolor("#f0f0f0")
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(6, 2.2))
+    for label, series in data.items():
+        ax.plot(time_axis, series, label=label, color=colors[label], linewidth=2)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_facecolor("#f0f0f0")
+    ax.legend(fontsize=8, loc="upper left")
     st.pyplot(fig, use_container_width=True)
 
-# Layout
 cols = st.columns(3)
 
 for idx, condition in enumerate(icu_conditions):
@@ -115,7 +110,7 @@ for idx, condition in enumerate(icu_conditions):
             col2.metric("RR", f"{vitals['RR']}")
             col3.metric("Lactate", f"{vitals['Lactate']} mmol/L")
 
-            plot_vital_trends(vitals)
+            plot_combined_trends(vitals)
             st.markdown("</div>", unsafe_allow_html=True)
 
-st.caption("Vitals auto-refresh every 5 seconds · Simulated for prototype.")
+st.caption("Vitals auto-refresh every 5 seconds · Simulated data for demonstration.")
