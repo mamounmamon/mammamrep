@@ -53,6 +53,13 @@ icu_conditions = [
     "Hemorrhage", "Pneumonia", "Shock"
 ]
 
+if "trend_data" not in st.session_state:
+    st.session_state.trend_data = {}
+    for cond in icu_conditions:
+        st.session_state.trend_data[cond] = {
+            "HR": [], "Temp": [], "RR": [], "SpO2": [], "Lactate": [], "timestamps": []
+        }
+
 def simulate_vitals():
     return {
         "HR": random.randint(60, 140),
@@ -71,20 +78,13 @@ def alert_level(vitals):
     else:
         return "🟢 Low", "alert-low"
 
-def plot_combined_trends(vitals):
-    time_axis = list(range(15))
-    data = {
-        "HR": np.cumsum(np.random.normal(0, 0.5, 15)) + vitals["HR"],
-        "Temp": np.cumsum(np.random.normal(0, 0.05, 15)) + vitals["Temp"],
-        "RR": np.cumsum(np.random.normal(0, 0.2, 15)) + vitals["RR"],
-        "SpO2": np.cumsum(np.random.normal(0, 0.3, 15)) + vitals["SpO2"],
-        "Lactate": np.cumsum(np.random.normal(0, 0.05, 15)) + vitals["Lactate"]
-    }
+def plot_combined_trends(condition):
+    data = st.session_state.trend_data[condition]
+    timestamps = data["timestamps"][-30:]
     colors = {"HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue", "Lactate": "purple"}
-
-    fig, ax = plt.subplots(figsize=(6, 2.2))
-    for label, series in data.items():
-        ax.plot(time_axis, series, label=label, color=colors[label], linewidth=2)
+    fig, ax = plt.subplots(figsize=(6, 2.5))
+    for label in ["HR", "Temp", "RR", "SpO2", "Lactate"]:
+        ax.plot(timestamps, data[label][-30:], label=label, color=colors[label], linewidth=2)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_facecolor("#f0f0f0")
@@ -96,6 +96,12 @@ cols = st.columns(3)
 for idx, condition in enumerate(icu_conditions):
     vitals = simulate_vitals()
     alert, alert_class = alert_level(vitals)
+
+    # Save trend data
+    data = st.session_state.trend_data[condition]
+    data["timestamps"].append(len(data["timestamps"]))
+    for key in ["HR", "Temp", "RR", "SpO2", "Lactate"]:
+        data[key].append(vitals[key])
 
     with cols[idx % 3]:
         with st.container():
@@ -110,7 +116,7 @@ for idx, condition in enumerate(icu_conditions):
             col2.metric("RR", f"{vitals['RR']}")
             col3.metric("Lactate", f"{vitals['Lactate']} mmol/L")
 
-            plot_combined_trends(vitals)
+            plot_combined_trends(condition)
             st.markdown("</div>", unsafe_allow_html=True)
 
 st.caption("Vitals auto-refresh every 5 seconds · Simulated data for demonstration.")
