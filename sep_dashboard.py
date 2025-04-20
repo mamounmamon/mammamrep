@@ -45,4 +45,4 @@ def simulate_vitals():
         "BP": f"{random.randint(90, 120)}/{random.randint(60, 85)}",
         "Temp": round(random.uniform(36.0, 40.0), 1),
         "SpO2": random.randint(88, 100),
-        "RR": random.randint
+        "RR": random.randint}
