@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import time
+import datetime
 
 st.set_page_config(layout="wide", page_title="ICU Live Dashboard")
 
@@ -17,16 +18,16 @@ if elapsed_time > REFRESH_INTERVAL:
     st.rerun()
 else:
     remaining = REFRESH_INTERVAL - int(elapsed_time)
-    st.markdown(f"<p style='color: gray; font-size: 12px;'>\u23f3 Auto-refreshing in {remaining}s...</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: gray; font-size: 12px;'>⏳ Auto-refreshing in {remaining}s...</p>", unsafe_allow_html=True)
 
 # Styling
 st.markdown("""
     <style>
     html, body, [class*="css"] {
-        font-size: 14px !important;
+        font-size: 12px !important;
     }
     .big-title {
-        font-size: 28px !important;
+        font-size: 26px !important;
         font-weight: 600;
         margin-bottom: 0.5rem;
     }
@@ -52,6 +53,10 @@ icu_conditions = [
     "Pulmonary Embolism", "Stroke", "Hypoglycemia", "Hyperkalemia",
     "Hemorrhage", "Pneumonia", "Shock"
 ]
+
+MAX_HISTORY_HOURS = 24
+DATA_INTERVAL_MINUTES = 5
+MAX_DATA_POINTS = MAX_HISTORY_HOURS * 60 // DATA_INTERVAL_MINUTES
 
 if "trend_data" not in st.session_state:
     st.session_state.trend_data = {}
@@ -80,15 +85,25 @@ def alert_level(vitals):
 
 def plot_combined_trends(condition):
     data = st.session_state.trend_data[condition]
-    timestamps = data["timestamps"][-30:]
+    timestamps = data["timestamps"][-MAX_DATA_POINTS:]
     colors = {"HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue", "Lactate": "purple"}
     fig, ax = plt.subplots(figsize=(6, 2.5))
+
     for label in ["HR", "Temp", "RR", "SpO2", "Lactate"]:
-        ax.plot(timestamps, data[label][-30:], label=label, color=colors[label], linewidth=2)
-    ax.set_xticks([])
+        values = data[label][-MAX_DATA_POINTS:]
+        if len(values) > MAX_DATA_POINTS:
+            values = values[-MAX_DATA_POINTS:]
+        ax.plot(timestamps, values, label=label, color=colors[label], linewidth=2)
+
+    if len(timestamps) > 4:
+        ax.set_xticks(timestamps[::len(timestamps)//4])
+        ax.set_xticklabels(timestamps[::len(timestamps)//4], rotation=45, fontsize=6)
+    else:
+        ax.set_xticks([])
+
     ax.set_yticks([])
     ax.set_facecolor("#f0f0f0")
-    ax.legend(fontsize=8, loc="upper left")
+    ax.legend(fontsize=7, loc="upper left")
     st.pyplot(fig, use_container_width=True)
 
 cols = st.columns(3)
@@ -99,9 +114,15 @@ for idx, condition in enumerate(icu_conditions):
 
     # Save trend data
     data = st.session_state.trend_data[condition]
-    data["timestamps"].append(len(data["timestamps"]))
+    current_time = datetime.datetime.now().strftime("%H:%M")
+    data["timestamps"].append(current_time)
+    if len(data["timestamps"]) > MAX_DATA_POINTS:
+        data["timestamps"].pop(0)
+
     for key in ["HR", "Temp", "RR", "SpO2", "Lactate"]:
         data[key].append(vitals[key])
+        if len(data[key]) > MAX_DATA_POINTS:
+            data[key].pop(0)
 
     with cols[idx % 3]:
         with st.container():
@@ -119,4 +140,4 @@ for idx, condition in enumerate(icu_conditions):
             plot_combined_trends(condition)
             st.markdown("</div>", unsafe_allow_html=True)
 
-st.caption("Vitals auto-refresh every 5 seconds · Simulated data for demonstration.")
+st.caption("Vitals auto-refresh every 5 seconds · Simulated data over 24 hours for demonstration.")
