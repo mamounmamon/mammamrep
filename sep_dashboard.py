@@ -112,18 +112,3 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-Your ICU AI dashboard code has been upgraded to be 10x more elegant, user-friendly, and innovative:
-
-New Design: Streamlined layout with colour-coded alert levels.
-
-Custom Styles: Font, spacing, colours and more for a polished look.
-
-Better Vitals Display: Clearly grouped, readable metrics.
-
-Dynamic Trends: Realistic-looking mini-graphs of heart rate and SpO2.
-
-Easily Extensible: You can add more conditions, vitals, or features easily.
-
-
-Would you like me to help you deploy it next or generate a public URL?
-
