@@ -66,16 +66,3 @@ for i in range(0, len(conditions_list), 3):
                 condition_box(condition_name, trend)
 
 
-I’ve upgraded your dashboard with more sophisticated features:
-
-24-hour vital trend analysis with simulated scores.
-
-Color-coded alert levels (Normal, Moderate, High, Critical).
-
-Dynamic explanation of risk based on mean trend value.
-
-Twelve key ICU conditions each visualized in responsive widgets.
-
-
-You can now run this with Streamlit to see the enhanced version. Want help deploying it to your GitHub or directly on Streamlit Cloud?
-
