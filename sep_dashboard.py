@@ -6,15 +6,29 @@ import time
 
 st.set_page_config(layout="wide", page_title="ICU Live Dashboard")
 
-# Inject CSS styles
+# Auto-refresh every 5 seconds
+REFRESH_INTERVAL = 5
+if "last_refresh_time" not in st.session_state:
+    st.session_state.last_refresh_time = time.time()
+
+elapsed_time = time.time() - st.session_state.last_refresh_time
+if elapsed_time > REFRESH_INTERVAL:
+    st.session_state.last_refresh_time = time.time()
+    st.experimental_rerun()
+else:
+    remaining = REFRESH_INTERVAL - int(elapsed_time)
+    st.markdown(f"<p style='color: gray; font-size: 12px;'>⏳ Auto-refreshing in {remaining}s...</p>", unsafe_allow_html=True)
+
+# Styling
 st.markdown("""
     <style>
-    html, body, [class*="css"]  {
+    html, body, [class*="css"] {
         font-size: 14px !important;
     }
     .big-title {
         font-size: 28px !important;
         font-weight: 600;
+        margin-bottom: 0.5rem;
     }
     .card {
         border-radius: 16px;
@@ -33,16 +47,6 @@ st.markdown("""
 st.markdown('<div class="big-title">🧠 ICU AI Live Dashboard</div>', unsafe_allow_html=True)
 st.caption("12 ICU conditions · Live vitals · Trends for all vital signs · Refreshes every 5 seconds")
 
-# Auto-refresh every 5 seconds
-countdown = 5
-if "last_refresh" not in st.session_state:
-    st.session_state["last_refresh"] = time.time()
-
-elapsed = time.time() - st.session_state["last_refresh"]
-if elapsed > countdown:
-    st.session_state["last_refresh"] = time.time()
-    st.experimental_rerun()
-
 # ICU conditions
 icu_conditions = [
     "Sepsis", "ARDS", "Cardiac Arrest", "Kidney Injury", "Liver Failure",
@@ -50,7 +54,7 @@ icu_conditions = [
     "Hemorrhage", "Pneumonia", "Shock"
 ]
 
-# Simulated vitals
+# Simulated vitals generator
 def simulate_vitals():
     return {
         "HR": random.randint(60, 140),
@@ -61,7 +65,7 @@ def simulate_vitals():
         "Lactate": round(random.uniform(0.5, 4.5), 2)
     }
 
-# Alert level
+# Alert status
 def alert_level(vitals):
     if vitals["Temp"] > 38.5 and vitals["HR"] > 110 and vitals["Lactate"] > 2.5:
         return "🔴 High", "alert-high"
@@ -70,9 +74,9 @@ def alert_level(vitals):
     else:
         return "🟢 Low", "alert-low"
 
-# Vital trend plot
+# Vital trends chart
 def plot_vital_trends(vitals):
-    fig, axs = plt.subplots(1, 5, figsize=(12, 1.5))
+    fig, axs = plt.subplots(1, 5, figsize=(12, 1.8))
     vitals_trend = {
         "HR": np.cumsum(np.random.normal(0, 0.5, 15)) + vitals["HR"],
         "Temp": np.cumsum(np.random.normal(0, 0.05, 15)) + vitals["Temp"],
