@@ -2,18 +2,24 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
-
 st.title("ICU AI Risk Dashboard")
-st.markdown("A simulated dashboard for monitoring multiple critical conditions in the ICU, including vital trends.")
+st.markdown("Simulated monitoring of critical ICU conditions with vitals and trend charts.")
 
-# Function to simulate vitals
+# Simulate time-series vitals
+def simulate_trends():
+    time = np.arange(0, 10)
+    trend = np.cumsum(np.random.normal(0, 1, 10))
+    return time, trend
+
+# Simulate current vital signs
 def generate_vitals(condition):
-    # Simulate realistic ICU vitals
     vitals = {
         "HR": random.randint(60, 140),
-        "BP": f"{random.randint(85, 120)}/{random.randint(55, 85)}",
+        "BP_sys": random.randint(85, 120),
+        "BP_dia": random.randint(55, 85),
         "Temp": round(random.uniform(36.0, 40.0), 1),
         "SpO2": random.randint(88, 100),
         "RR": random.randint(12, 28),
@@ -21,7 +27,7 @@ def generate_vitals(condition):
     }
     return vitals
 
-# Function to determine alert level based on example rules
+# Determine alert level
 def determine_alert(vitals, condition):
     if condition == "Sepsis":
         if vitals["Temp"] > 38.3 and vitals["HR"] > 100 and vitals["Lactate"] > 2.0:
@@ -42,36 +48,50 @@ def determine_alert(vitals, condition):
             return "High"
         else:
             return "Low"
-    # Add more logic per condition
     else:
         return random.choice(["Low", "Moderate", "High"])
 
-# 12 common ICU conditions
+# Plot trend
+def plot_trend(title, trend_data):
+    fig, ax = plt.subplots(figsize=(2.5, 1.5))
+    time, values = trend_data
+    ax.plot(time, values, color="blue", linewidth=2)
+    ax.set_title(title, fontsize=8)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    st.pyplot(fig)
+
+# ICU conditions
 icu_conditions = [
     "Sepsis", "ARDS", "Cardiac Arrest", "Kidney Injury", "Liver Failure",
     "Pulmonary Embolism", "Stroke", "Hypoglycemia", "Hyperkalemia",
     "Hemorrhage", "Pneumonia", "Shock"
 ]
 
-# Layout: 3 boxes per row
 cols = st.columns(3)
 
 for i, condition in enumerate(icu_conditions):
     vitals = generate_vitals(condition)
     alert = determine_alert(vitals, condition)
-    status_color = {"Low": "green", "Moderate": "orange", "High": "red"}[alert]
+    color = {"Low": "green", "Moderate": "orange", "High": "red"}[alert]
 
     with cols[i % 3]:
         st.markdown(f"### {condition}")
-        st.markdown(f"**Alert Level:** <span style='color:{status_color}; font-weight:bold'>{alert}</span>", unsafe_allow_html=True)
-        st.markdown("**Vitals Monitored:**")
+        st.markdown(f"**Alert:** <span style='color:{color}'>{alert}</span>", unsafe_allow_html=True)
         st.write(f"- HR: {vitals['HR']} bpm")
-        st.write(f"- BP: {vitals['BP']}")
+        st.write(f"- BP: {vitals['BP_sys']}/{vitals['BP_dia']}")
         st.write(f"- Temp: {vitals['Temp']} °C")
         st.write(f"- SpO2: {vitals['SpO2']}%")
         st.write(f"- RR: {vitals['RR']} bpm")
         st.write(f"- Lactate: {vitals['Lactate']} mmol/L")
 
-st.markdown("---")
-st.caption("Note: This is a prototype simulation. Data is randomly generated to reflect condition-specific patterns.")
+        st.markdown("**Vital Trends:**")
+        plot_trend("Heart Rate", simulate_trends())
+        plot_trend("SpO2", simulate_trends())
 
+st.markdown("---")
+st.caption("Vitals are randomly generated for prototyping. This dashboard simulates ICU monitoring with basic trend tracking.")
