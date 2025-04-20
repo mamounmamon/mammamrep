@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import datetime
+import time
+from datetime import datetime, timedelta
 
 # Simulated patient data for 12 hours
 hours = pd.date_range(end=datetime.datetime.now(), periods=12, freq='H')
