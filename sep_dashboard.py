@@ -14,7 +14,7 @@ if "last_refresh_time" not in st.session_state:
 elapsed_time = time.time() - st.session_state.last_refresh_time
 if elapsed_time > REFRESH_INTERVAL:
     st.session_state.last_refresh_time = time.time()
-    st.experimental_rerun()
+    st.rerun()
 else:
     remaining = REFRESH_INTERVAL - int(elapsed_time)
     st.markdown(f"<p style='color: gray; font-size: 12px;'>\u23f3 Auto-refreshing in {remaining}s...</p>", unsafe_allow_html=True)
