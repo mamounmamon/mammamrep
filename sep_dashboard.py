@@ -1,4 +1,8 @@
-import streamlit as st import pandas as pd import numpy as np import time from datetime import datetime, timedelta
+import streamlit as st
+import pandas as pd
+import numpy as np
+import time
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Live ICU Monitor", layout="wide") st.title("Live ICU Sepsis Risk Monitor")
 
