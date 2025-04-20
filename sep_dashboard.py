@@ -24,18 +24,18 @@ else:
 st.markdown("""
     <style>
     html, body, [class*="css"] {
-        font-size: 12px !important;
+        font-size: 11px !important;
     }
     .big-title {
-        font-size: 26px !important;
-        font-weight: 600;
+        font-size: 28px !important;
+        font-weight: 700;
         margin-bottom: 0.5rem;
     }
     .card {
         border-radius: 16px;
         padding: 1rem;
-        background-color: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background-color: #ffffff;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         margin-bottom: 1rem;
     }
     .alert-low { color: green; }
@@ -45,8 +45,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Title
-st.markdown('<div class="big-title">🧠 ICU AI Live Dashboard</div>', unsafe_allow_html=True)
-st.caption("12 ICU conditions · Live vitals · Combined trends · Refreshes every 5 seconds")
+st.markdown('<div class="big-title">🧠 ICU AI Smart Monitoring Dashboard</div>', unsafe_allow_html=True)
+st.caption("Smart alerts · Live 24h trends · Multivariable insight · 12 monitored ICU risks")
 
 icu_conditions = [
     "Sepsis", "ARDS", "Cardiac Arrest", "Kidney Injury", "Liver Failure",
@@ -62,23 +62,34 @@ if "trend_data" not in st.session_state:
     st.session_state.trend_data = {}
     for cond in icu_conditions:
         st.session_state.trend_data[cond] = {
-            "HR": [], "Temp": [], "RR": [], "SpO2": [], "Lactate": [], "timestamps": []
+            "HR": [], "Temp": [], "RR": [], "SpO2": [], "Lactate": [], "BP_sys": [], "BP_dia": [], "timestamps": []
         }
 
 def simulate_vitals():
+    bp_sys = random.randint(90, 140)
+    bp_dia = random.randint(60, 90)
     return {
         "HR": random.randint(60, 140),
-        "BP": f"{random.randint(90, 120)}/{random.randint(60, 85)}",
+        "BP_sys": bp_sys,
+        "BP_dia": bp_dia,
+        "BP": f"{bp_sys}/{bp_dia}",
         "Temp": round(random.uniform(36.0, 40.0), 1),
-        "SpO2": random.randint(88, 100),
-        "RR": random.randint(10, 28),
+        "SpO2": random.randint(85, 100),
+        "RR": random.randint(10, 30),
         "Lactate": round(random.uniform(0.5, 4.5), 2)
     }
 
-def alert_level(vitals):
-    if vitals["Temp"] > 38.5 and vitals["HR"] > 110 and vitals["Lactate"] > 2.5:
+def alert_level(v):
+    score = 0
+    score += v["HR"] > 110
+    score += v["Temp"] > 38.5
+    score += v["SpO2"] < 92
+    score += v["Lactate"] > 2.5
+    score += v["BP_sys"] < 95
+    
+    if score >= 4:
         return "🔴 High", "alert-high"
-    elif vitals["Temp"] > 37.8 or vitals["SpO2"] < 94:
+    elif score >= 2:
         return "🟠 Moderate", "alert-moderate"
     else:
         return "🟢 Low", "alert-low"
@@ -86,14 +97,15 @@ def alert_level(vitals):
 def plot_combined_trends(condition):
     data = st.session_state.trend_data[condition]
     timestamps = data["timestamps"][-MAX_DATA_POINTS:]
-    colors = {"HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue", "Lactate": "purple"}
-    fig, ax = plt.subplots(figsize=(6, 2.5))
-
-    for label in ["HR", "Temp", "RR", "SpO2", "Lactate"]:
-        values = data[label][-MAX_DATA_POINTS:]
-        if len(values) > MAX_DATA_POINTS:
-            values = values[-MAX_DATA_POINTS:]
-        ax.plot(timestamps, values, label=label, color=colors[label], linewidth=2)
+    colors = {
+        "HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue",
+        "Lactate": "purple", "BP_sys": "gray"
+    }
+    fig, ax = plt.subplots(figsize=(7, 2.5))
+    
+    for key in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys"]:
+        values = data[key][-MAX_DATA_POINTS:]
+        ax.plot(timestamps, values, label=key, color=colors[key], linewidth=2)
 
     if len(timestamps) > 4:
         ax.set_xticks(timestamps[::len(timestamps)//4])
@@ -102,7 +114,7 @@ def plot_combined_trends(condition):
         ax.set_xticks([])
 
     ax.set_yticks([])
-    ax.set_facecolor("#f0f0f0")
+    ax.set_facecolor("#f7f7f7")
     ax.legend(fontsize=7, loc="upper left")
     st.pyplot(fig, use_container_width=True)
 
@@ -112,17 +124,15 @@ for idx, condition in enumerate(icu_conditions):
     vitals = simulate_vitals()
     alert, alert_class = alert_level(vitals)
 
-    # Save trend data
     data = st.session_state.trend_data[condition]
-    current_time = datetime.datetime.now().strftime("%H:%M")
-    data["timestamps"].append(current_time)
+    now = datetime.datetime.now().strftime("%H:%M")
+    data["timestamps"].append(now)
+    for k in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys", "BP_dia"]:
+        data[k].append(vitals[k])
+        if len(data[k]) > MAX_DATA_POINTS:
+            data[k].pop(0)
     if len(data["timestamps"]) > MAX_DATA_POINTS:
         data["timestamps"].pop(0)
-
-    for key in ["HR", "Temp", "RR", "SpO2", "Lactate"]:
-        data[key].append(vitals[key])
-        if len(data[key]) > MAX_DATA_POINTS:
-            data[key].pop(0)
 
     with cols[idx % 3]:
         with st.container():
@@ -140,4 +150,4 @@ for idx, condition in enumerate(icu_conditions):
             plot_combined_trends(condition)
             st.markdown("</div>", unsafe_allow_html=True)
 
-st.caption("Vitals auto-refresh every 5 seconds · Simulated data over 24 hours for demonstration.")
+st.caption("Auto-refreshing every 5 seconds · Monitoring 24h vitals · Simulated data for 12 ICU risk profiles")
