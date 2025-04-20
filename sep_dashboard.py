@@ -1,68 +1,77 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import datetime
 import random
-import matplotlib.pyplot as plt
 
-# Simulate vitals data for a condition
-def generate_vital_trends(mean=0.5, std_dev=0.1):
-    time_range = pd.date_range(end=datetime.datetime.now(), periods=24, freq='H')
-    values = np.clip(np.random.normal(mean, std_dev, len(time_range)), 0, 1)
-    return pd.Series(values, index=time_range)
+st.set_page_config(layout="wide")
 
-# More advanced condition box with trend explanation and alerts
-def condition_box(name, trend):
-    avg_value = trend.mean()
-    risk_score = avg_value * 100
-    alert_level = "Normal"
-    alert_color = "green"
+st.title("ICU AI Risk Dashboard")
+st.markdown("A simulated dashboard for monitoring multiple critical conditions in the ICU, including vital trends.")
 
-    if risk_score > 80:
-        alert_level = "Critical"
-        alert_color = "red"
-    elif risk_score > 60:
-        alert_level = "High"
-        alert_color = "orange"
-    elif risk_score > 40:
-        alert_level = "Moderate"
-        alert_color = "yellow"
+# Function to simulate vitals
+def generate_vitals(condition):
+    # Simulate realistic ICU vitals
+    vitals = {
+        "HR": random.randint(60, 140),
+        "BP": f"{random.randint(85, 120)}/{random.randint(55, 85)}",
+        "Temp": round(random.uniform(36.0, 40.0), 1),
+        "SpO2": random.randint(88, 100),
+        "RR": random.randint(12, 28),
+        "Lactate": round(random.uniform(0.5, 4.5), 2)
+    }
+    return vitals
 
-    with st.container():
-        st.subheader(name)
-        st.metric(label="Risk Score", value=f"{risk_score:.1f}", delta=f"{(risk_score - 50):+.1f}")
-        st.markdown(f"**Alert Level:** :{alert_color}[{alert_level}]")
-        st.line_chart(trend)
-        st.caption("Trend based on recent 24-hour vitals simulation")
+# Function to determine alert level based on example rules
+def determine_alert(vitals, condition):
+    if condition == "Sepsis":
+        if vitals["Temp"] > 38.3 and vitals["HR"] > 100 and vitals["Lactate"] > 2.0:
+            return "High"
+        elif vitals["Temp"] > 37.5:
+            return "Moderate"
+        else:
+            return "Low"
+    elif condition == "ARDS":
+        if vitals["SpO2"] < 92 and vitals["RR"] > 22:
+            return "High"
+        elif vitals["SpO2"] < 94:
+            return "Moderate"
+        else:
+            return "Low"
+    elif condition == "Cardiac Arrest":
+        if vitals["HR"] < 40 or vitals["SpO2"] < 90:
+            return "High"
+        else:
+            return "Low"
+    # Add more logic per condition
+    else:
+        return random.choice(["Low", "Moderate", "High"])
 
-# ICU Dashboard Title
-st.title("ICU Multi-Condition Intelligent Dashboard")
-st.markdown("This dashboard shows live trends and AI-estimated risks for critical conditions in the ICU.")
+# 12 common ICU conditions
+icu_conditions = [
+    "Sepsis", "ARDS", "Cardiac Arrest", "Kidney Injury", "Liver Failure",
+    "Pulmonary Embolism", "Stroke", "Hypoglycemia", "Hyperkalemia",
+    "Hemorrhage", "Pneumonia", "Shock"
+]
 
-# Example conditions to simulate
-conditions_data = {
-    "Sepsis": generate_vital_trends(mean=0.65),
-    "Acute Kidney Injury": generate_vital_trends(mean=0.55),
-    "ARDS": generate_vital_trends(mean=0.60),
-    "Myocardial Infarction": generate_vital_trends(mean=0.45),
-    "DKA (Diabetic Ketoacidosis)": generate_vital_trends(mean=0.50),
-    "Pulmonary Embolism": generate_vital_trends(mean=0.52),
-    "Stroke": generate_vital_trends(mean=0.48),
-    "Hypovolemic Shock": generate_vital_trends(mean=0.70),
-    "Severe Pneumonia": generate_vital_trends(mean=0.58),
-    "Multi-Organ Failure": generate_vital_trends(mean=0.75),
-    "Hyperkalemia": generate_vital_trends(mean=0.62),
-    "Severe Hypertension": generate_vital_trends(mean=0.67)
-}
+# Layout: 3 boxes per row
+cols = st.columns(3)
 
-# Display conditions in rows with 3 columns
-conditions_list = list(conditions_data.items())
-for i in range(0, len(conditions_list), 3):
-    cols = st.columns(3)
-    for j in range(3):
-        if i + j < len(conditions_list):
-            condition_name, trend = conditions_list[i + j]
-            with cols[j]:
-                condition_box(condition_name, trend)
+for i, condition in enumerate(icu_conditions):
+    vitals = generate_vitals(condition)
+    alert = determine_alert(vitals, condition)
+    status_color = {"Low": "green", "Moderate": "orange", "High": "red"}[alert]
 
+    with cols[i % 3]:
+        st.markdown(f"### {condition}")
+        st.markdown(f"**Alert Level:** <span style='color:{status_color}; font-weight:bold'>{alert}</span>", unsafe_allow_html=True)
+        st.markdown("**Vitals Monitored:**")
+        st.write(f"- HR: {vitals['HR']} bpm")
+        st.write(f"- BP: {vitals['BP']}")
+        st.write(f"- Temp: {vitals['Temp']} °C")
+        st.write(f"- SpO2: {vitals['SpO2']}%")
+        st.write(f"- RR: {vitals['RR']} bpm")
+        st.write(f"- Lactate: {vitals['Lactate']} mmol/L")
+
+st.markdown("---")
+st.caption("Note: This is a prototype simulation. Data is randomly generated to reflect condition-specific patterns.")
 
