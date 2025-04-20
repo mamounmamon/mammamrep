@@ -45,4 +45,49 @@ def simulate_vitals():
         "BP": f"{random.randint(90, 120)}/{random.randint(60, 85)}",
         "Temp": round(random.uniform(36.0, 40.0), 1),
         "SpO2": random.randint(88, 100),
-        "RR": random.randint}
+        "RR": random.randint(10, 28),
+        "Lactate": round(random.uniform(0.5, 4.5), 2)
+    }
+
+def alert_level(vitals):
+    if vitals["Temp"] > 38.5 and vitals["HR"] > 110 and vitals["Lactate"] > 2.5:
+        return "🔴 High", "alert-high"
+    elif vitals["Temp"] > 37.8 or vitals["SpO2"] < 94:
+        return "🟠 Moderate", "alert-moderate"
+    else:
+        return "🟢 Low", "alert-low"
+
+def plot_trend():
+    fig, ax = plt.subplots(figsize=(2.5, 0.7))
+    y = np.cumsum(np.random.normal(0, 1, 12)) + 100
+    ax.plot(y, color='deepskyblue', linewidth=2)
+    ax.axis('off')
+    st.pyplot(fig, use_container_width=True)
+
+# Layout
+cols = st.columns(3)
+
+for idx, condition in enumerate(icu_conditions):
+    vitals = simulate_vitals()
+    alert, alert_class = alert_level(vitals)
+
+    with cols[idx % 3]:
+        with st.container():
+            st.markdown(f"<div class='card'>", unsafe_allow_html=True)
+            st.markdown(f"#### {condition} <span class='{alert_class}'>{alert}</span>", unsafe_allow_html=True)
+
+            st.markdown("<div class='metric-label'>Vitals:</div>", unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            col1.metric("HR", f"{vitals['HR']} bpm")
+            col2.metric("BP", vitals["BP"])
+            col3.metric("Temp", f"{vitals['Temp']} °C")
+            col1.metric("SpO₂", f"{vitals['SpO2']}%")
+            col2.metric("RR", f"{vitals['RR']}")
+            col3.metric("Lactate", f"{vitals['Lactate']} mmol/L")
+
+            st.markdown("Trend: Heart Rate (simulated)")
+            plot_trend()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("---")
+st.caption("Vitals update automatically every 5 seconds.")
