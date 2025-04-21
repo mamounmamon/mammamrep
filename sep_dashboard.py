@@ -146,7 +146,7 @@ with left:
     st.markdown(f"<div class='card'><h4>{selected_condition}</h4><span class='{alert_class}'>{alert}</span>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
-   col1.metric("HR", f"{vitals['HR'][-1]} bpm")
+   col1.metric("HR", f"{vitals['HR']} bpm")
 col2.metric("BP", f"{vitals['BP']}")
 col3.metric("Temp", f"{vitals['Temp'][-1]} °C")
     col1.metric("SpO₂", f"{vitals['SpO2'][-1]}%")
