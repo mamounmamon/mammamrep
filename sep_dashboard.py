@@ -26,7 +26,6 @@ if "trend_data" not in st.session_state:
     st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk"]}
 
 # Simulate vitals
-
 def simulate_vitals():
     return {
         "HR": random.randint(60, 140),
@@ -50,7 +49,6 @@ def simulate_vitals():
     }
 
 # Update vitals
-
 def update_data():
     now = datetime.datetime.now().strftime("%H:%M:%S")
     vitals = simulate_vitals()
@@ -58,7 +56,8 @@ def update_data():
     st.session_state.trend_data["timestamps"].append(now)
 
     for k, v in vitals.items():
-      st.session_state.trend_data[k].append(v)
+        if k in st.session_state.trend_data:
+            st.session_state.trend_data[k].append(v)
 
     # Risk calculations
     sepsis_score = 0
@@ -87,17 +86,14 @@ def update_data():
     st.session_state.trend_data["Sepsis_Risk"].append(int((sepsis_score / 12) * 100))
     st.session_state.trend_data["ARDS_Risk"].append(int((ards_score / 4) * 100))
 
-    # Truncate history
     for key in st.session_state.trend_data:
         if len(st.session_state.trend_data[key]) > MAX_HISTORY:
             st.session_state.trend_data[key] = st.session_state.trend_data[key][-MAX_HISTORY:]
 
- update_data()
+update_data()
 
-# Layout
 st.title("🧠 ICU Condition Intelligence Dashboard")
 
-# Alerts
 risk_col1, risk_col2 = st.columns(2)
 sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
 ards = st.session_state.trend_data["ARDS_Risk"][-1]
@@ -107,7 +103,6 @@ if sepsis >= 80:
 if ards >= 75:
     risk_col2.warning("⚠️ ARDS Risk High! Monitor Closely", icon="❗")
 
-# Key metrics
 metrics_grid = st.columns(4)
 data = st.session_state.trend_data
 latest_values = {k: v[-1] for k, v in data.items() if k != "timestamps"}
@@ -116,7 +111,6 @@ for i, (k, v) in enumerate(latest_values.items()):
     label = k.replace("_", " ")
     metrics_grid[i % 4].metric(label, str(v))
 
-# Trend plots
 with st.expander("📈 Trend Analysis Charts", expanded=True):
     fig, axs = plt.subplots(4, 2, figsize=(15, 10))
     axes = axs.flatten()
@@ -140,7 +134,6 @@ with st.expander("📈 Trend Analysis Charts", expanded=True):
     plt.tight_layout()
     st.pyplot(fig2)
 
-# Data Export
 with st.expander("⬇️ Export Data"):
     df = pd.DataFrame(data)
     csv = df.to_csv(index=False).encode("utf-8")
@@ -151,6 +144,5 @@ with st.expander("⬇️ Export Data"):
         mime="text/csv"
     )
 
-# Refresh page
 time.sleep(REFRESH_INTERVAL)
-st.rerun()
+st.experimental_rerun()
