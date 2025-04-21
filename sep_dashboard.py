@@ -19,11 +19,11 @@ st_autorefresh = st.empty()
 METRICS = [
     "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
     "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
-    "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2", "Sepsis_Risk", "ARDS_Risk"
+    "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
 ]
 
 if "trend_data" not in st.session_state:
-    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS}
+    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk"]}
 
 # Simulate vitals
 
