@@ -5,7 +5,7 @@ import pandas as pd
 import random
 import time
 import datetime
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
