@@ -1,51 +1,104 @@
-Sepsis Live Dashboard with Patient Selector and Real-time Charts
+import streamlit as st
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+import time
+import datetime
 
-import streamlit as st import pandas as pd import numpy as np import time import random import plotly.graph_objs as go
+st.set_page_config(layout="wide", page_title="Sepsis ICU Monitor")
 
-st.set_page_config(page_title="Sepsis Live Dashboard", layout="wide") st.title("Sepsis Live Monitoring Dashboard")
+REFRESH_INTERVAL = 1
+if "last_refresh_time" not in st.session_state:
+    st.session_state.last_refresh_time = time.time()
 
-Simulated list of ICU patients
+elapsed_time = time.time() - st.session_state.last_refresh_time
+if elapsed_time > REFRESH_INTERVAL:
+    st.session_state.last_refresh_time = time.time()
+    st.rerun()
 
-patients = ["Patient A", "Patient B", "Patient C"] selected_patient = st.selectbox("Select Patient", patients)
+# Initialize session state
+if "trend_data" not in st.session_state:
+    st.session_state.trend_data = {
+        "timestamps": [],
+        "HR": [],
+        "BP_sys": [],
+        "BP_dia": [],
+        "Temp": [],
+        "SpO2": [],
+        "RR": [],
+        "Lactate": [],
+        "WBC": []
+    }
 
-Initialize session state
+# Simulate vitals
+bp_sys = random.randint(90, 140)
+bp_dia = random.randint(60, 90)
+vitals = {
+    "HR": random.randint(60, 130),
+    "BP_sys": bp_sys,
+    "BP_dia": bp_dia,
+    "Temp": round(random.uniform(36.0, 40.5), 1),
+    "SpO2": random.randint(85, 100),
+    "RR": random.randint(12, 28),
+    "Lactate": round(random.uniform(0.5, 5.0), 2),
+    "WBC": round(random.uniform(4.0, 20.0), 1)
+}
 
-if "data" not in st.session_state: st.session_state.data = {p: pd.DataFrame(columns=["Time", "HR", "SpO2", "BP", "RR", "Temp", "Lactate"]) for p in patients}
+now = datetime.datetime.now().strftime("%H:%M:%S")
+st.session_state.trend_data["timestamps"].append(now)
+for key in vitals:
+    st.session_state.trend_data[key].append(vitals[key])
+    if len(st.session_state.trend_data[key]) > 1440:
+        st.session_state.trend_data[key].pop(0)
+if len(st.session_state.trend_data["timestamps"]) > 1440:
+    st.session_state.trend_data["timestamps"].pop(0)
 
-def generate_new_data(): return { "Time": pd.Timestamp.now(), "HR": random.randint(90, 130), "SpO2": random.uniform(88, 100), "BP": random.randint(85, 120), "RR": random.randint(20, 35), "Temp": random.uniform(37.5, 39.5), "Lactate": round(random.uniform(2.0, 4.5), 2) }
+# Risk assessment
+def get_alert(v):
+    score = 0
+    score += v["HR"] > 110
+    score += v["Temp"] > 38.5
+    score += v["SpO2"] < 92
+    score += v["Lactate"] > 2.5
+    score += v["BP_sys"] < 95
+    score += v["WBC"] > 12 or v["WBC"] < 4
+    if score >= 5:
+        return "🔴 High", "#ffcccc"
+    elif score >= 3:
+        return "🟠 Moderate", "#fff3cd"
+    else:
+        return "🟢 Low", "#d4edda"
 
-def update_data(patient): new_row = generate_new_data() df = st.session_state.data[patient] df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True) # Limit to last 60 entries df = df.tail(60) st.session_state.data[patient] = df return df
+alert_level, bg_color = get_alert(vitals)
 
-Run update loop
+# UI layout
+st.markdown(f"""
+    <div style='background-color: {bg_color}; padding: 1rem; border-radius: 10px;'>
+        <h2>🧠 Sepsis Monitoring Dashboard</h2>
+        <h4>Status: {alert_level}</h4>
+    </div>
+    <br>
+""", unsafe_allow_html=True)
 
-placeholder = st.empty()
+col1, col2, col3 = st.columns(3)
+col1.metric("Heart Rate (HR)", f"{vitals['HR']} bpm")
+col2.metric("Blood Pressure", f"{vitals['BP_sys']}/{vitals['BP_dia']}")
+col3.metric("Temperature", f"{vitals['Temp']} °C")
+col1.metric("SpO₂", f"{vitals['SpO2']}%")
+col2.metric("Respiratory Rate", f"{vitals['RR']} bpm")
+col3.metric("Lactate", f"{vitals['Lactate']} mmol/L")
+col1.metric("WBC Count", f"{vitals['WBC']} x10⁹/L")
 
-with placeholder.container(): while True: df = update_data(selected_patient)
+# Trend chart
+with st.expander("📈 Show 24h Vital Trends", expanded=True):
+    fig, ax = plt.subplots(figsize=(12, 4))
+    t = st.session_state.trend_data["timestamps"][-100:]
+    for key in ["HR", "Temp", "SpO2", "RR", "Lactate", "BP_sys", "WBC"]:
+        y = st.session_state.trend_data[key][-100:]
+        ax.plot(t, y, label=key)
+    ax.legend()
+    ax.set_xticks(t[::max(1, len(t)//10)])
+    ax.set_xticklabels(t[::max(1, len(t)//10)], rotation=45)
+    st.pyplot(fig)
 
-col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Heart Rate (HR)", f"{df.iloc[-1]['HR']} bpm")
-        st.metric("Respiratory Rate (RR)", f"{df.iloc[-1]['RR']} bpm")
-        st.metric("Temperature", f"{df.iloc[-1]['Temp']:.1f} °C")
-    with col2:
-        st.metric("SpO2", f"{df.iloc[-1]['SpO2']:.1f}%")
-        st.metric("Blood Pressure (BP)", f"{df.iloc[-1]['BP']} mmHg")
-        st.metric("Lactate", f"{df.iloc[-1]['Lactate']} mmol/L")
-
-    # Trend charts
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df["Time"], y=df["HR"], mode='lines+markers', name='HR'))
-    fig.add_trace(go.Scatter(x=df["Time"], y=df["SpO2"], mode='lines+markers', name='SpO2'))
-    fig.add_trace(go.Scatter(x=df["Time"], y=df["BP"], mode='lines+markers', name='BP'))
-    fig.add_trace(go.Scatter(x=df["Time"], y=df["RR"], mode='lines+markers', name='RR'))
-    fig.add_trace(go.Scatter(x=df["Time"], y=df["Temp"], mode='lines+markers', name='Temp'))
-    fig.add_trace(go.Scatter(x=df["Time"], y=df["Lactate"], mode='lines+markers', name='Lactate'))
-
-    fig.update_layout(title='Vital Signs Trend (Last Minute)', xaxis_title='Time', yaxis_title='Value',
-                      height=500, margin=dict(l=0, r=0, t=40, b=0))
-    st.plotly_chart(fig, use_container_width=True)
-
-    time.sleep(1)
-    st.experimental_rerun()
-
-    
+st.caption("Auto-refreshing every 1 second · Sepsis focus · Simulated vitals")
