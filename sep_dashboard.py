@@ -167,7 +167,7 @@ with right:
         with st.expander(f"{condition} ({alert})", expanded=False):
             col1, col2, col3 = st.columns(3)
             col1.metric("HR", f"{vitals['HR'][-1]} bpm")
-            col2.metric("BP", f"{vitals['BP'][-1]}")
+            #col2.metric("BP", f"{vitals['BP'][-1]}")
             col3.metric("Temp", f"{vitals['Temp'][-1]} °C")
             col1.metric("SpO₂", f"{vitals['SpO2'][-1]}%")
             col2.metric("RR", f"{vitals['RR'][-1]}")
