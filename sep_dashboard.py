@@ -81,8 +81,8 @@ update_data()
 
 # Display risk alert
 current_risk = st.session_state.trend_data["Risk"][-1]
-if current_risk >= 80:
-    st.error("🚨 High Risk Alert: Risk exceeds 80%! Immediate attention required!", icon="⚠️")
+if current_risk >= 50:
+    st.error("🚨 High Risk Alert: Risk exceeds 50%! Immediate attention required!", icon="⚠️")
 
 # Display dashboard
 st.title("🦠 Live Sepsis Monitoring Dashboard")
