@@ -1,104 +1,87 @@
 import streamlit as st
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 import random
 import time
 import datetime
 
-st.set_page_config(layout="wide", page_title="Sepsis ICU Monitor")
+st.set_page_config(layout="wide", page_title="Live Sepsis Dashboard")
 
+# Auto-refresh every 1 second
+st_autorefresh = st.empty()
 REFRESH_INTERVAL = 1
-if "last_refresh_time" not in st.session_state:
-    st.session_state.last_refresh_time = time.time()
-
-elapsed_time = time.time() - st.session_state.last_refresh_time
-if elapsed_time > REFRESH_INTERVAL:
-    st.session_state.last_refresh_time = time.time()
-    st.rerun()
 
 # Initialize session state
 if "trend_data" not in st.session_state:
     st.session_state.trend_data = {
         "timestamps": [],
         "HR": [],
-        "BP_sys": [],
-        "BP_dia": [],
         "Temp": [],
-        "SpO2": [],
         "RR": [],
+        "SpO2": [],
         "Lactate": [],
-        "WBC": []
+        "BP_sys": []
     }
 
-# Simulate vitals
-bp_sys = random.randint(90, 140)
-bp_dia = random.randint(60, 90)
-vitals = {
-    "HR": random.randint(60, 130),
-    "BP_sys": bp_sys,
-    "BP_dia": bp_dia,
-    "Temp": round(random.uniform(36.0, 40.5), 1),
-    "SpO2": random.randint(85, 100),
-    "RR": random.randint(12, 28),
-    "Lactate": round(random.uniform(0.5, 5.0), 2),
-    "WBC": round(random.uniform(4.0, 20.0), 1)
+# Simulate new vitals
+def simulate_vitals():
+    bp_sys = random.randint(90, 140)
+    return {
+        "HR": random.randint(60, 140),
+        "Temp": round(random.uniform(36.0, 40.0), 1),
+        "RR": random.randint(10, 30),
+        "SpO2": random.randint(85, 100),
+        "Lactate": round(random.uniform(0.5, 4.5), 2),
+        "BP_sys": bp_sys
+    }
+
+# Update data
+def update_data():
+    now = datetime.datetime.now().strftime("%H:%M:%S")
+    vitals = simulate_vitals()
+    st.session_state.trend_data["timestamps"].append(now)
+    for k, v in vitals.items():
+        st.session_state.trend_data[k].append(v)
+        if len(st.session_state.trend_data[k]) > 300:
+            st.session_state.trend_data[k].pop(0)
+    if len(st.session_state.trend_data["timestamps"]) > 300:
+        st.session_state.trend_data["timestamps"].pop(0)
+
+update_data()
+
+# Display dashboard
+st.title("🦠 Live Sepsis Monitoring Dashboard")
+
+# Vital metrics
+col1, col2, col3 = st.columns(3)
+data = st.session_state.trend_data
+
+col1.metric("Heart Rate (HR)", f"{data['HR'][-1]} bpm")
+col2.metric("Temperature (°C)", f"{data['Temp'][-1]}")
+col3.metric("Respiratory Rate (RR)", f"{data['RR'][-1]}")
+
+col1.metric("Oxygen Saturation (SpO₂)", f"{data['SpO2'][-1]} %")
+col2.metric("Lactate (mmol/L)", f"{data['Lactate'][-1]}")
+col3.metric("Systolic BP", f"{data['BP_sys'][-1]} mmHg")
+
+# Combined trend chart
+fig, ax = plt.subplots(figsize=(10, 4))
+colors = {
+    "HR": "red", "Temp": "orange", "RR": "green",
+    "SpO2": "blue", "Lactate": "purple", "BP_sys": "gray"
 }
 
-now = datetime.datetime.now().strftime("%H:%M:%S")
-st.session_state.trend_data["timestamps"].append(now)
-for key in vitals:
-    st.session_state.trend_data[key].append(vitals[key])
-    if len(st.session_state.trend_data[key]) > 1440:
-        st.session_state.trend_data[key].pop(0)
-if len(st.session_state.trend_data["timestamps"]) > 1440:
-    st.session_state.trend_data["timestamps"].pop(0)
+for key in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys"]:
+    ax.plot(data["timestamps"], data[key], label=key, color=colors[key], linewidth=1)
 
-# Risk assessment
-def get_alert(v):
-    score = 0
-    score += v["HR"] > 110
-    score += v["Temp"] > 38.5
-    score += v["SpO2"] < 92
-    score += v["Lactate"] > 2.5
-    score += v["BP_sys"] < 95
-    score += v["WBC"] > 12 or v["WBC"] < 4
-    if score >= 5:
-        return "🔴 High", "#ffcccc"
-    elif score >= 3:
-        return "🟠 Moderate", "#fff3cd"
-    else:
-        return "🟢 Low", "#d4edda"
+ax.set_xticks(data["timestamps"][::max(1, len(data["timestamps"])//8)])
+ax.set_xticklabels(data["timestamps"][::max(1, len(data["timestamps"])//8)], rotation=45, fontsize=8)
+ax.set_yticks([])
+ax.set_facecolor("#f5f5f5")
+ax.legend(loc="upper left", fontsize=8)
+ax.set_title("Sepsis Vital Trends (Live)", fontsize=12)
+st.pyplot(fig, use_container_width=True)
 
-alert_level, bg_color = get_alert(vitals)
-
-# UI layout
-st.markdown(f"""
-    <div style='background-color: {bg_color}; padding: 1rem; border-radius: 10px;'>
-        <h2>🧠 Sepsis Monitoring Dashboard</h2>
-        <h4>Status: {alert_level}</h4>
-    </div>
-    <br>
-""", unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Heart Rate (HR)", f"{vitals['HR']} bpm")
-col2.metric("Blood Pressure", f"{vitals['BP_sys']}/{vitals['BP_dia']}")
-col3.metric("Temperature", f"{vitals['Temp']} °C")
-col1.metric("SpO₂", f"{vitals['SpO2']}%")
-col2.metric("Respiratory Rate", f"{vitals['RR']} bpm")
-col3.metric("Lactate", f"{vitals['Lactate']} mmol/L")
-col1.metric("WBC Count", f"{vitals['WBC']} x10⁹/L")
-
-# Trend chart
-with st.expander("📈 Show 24h Vital Trends", expanded=True):
-    fig, ax = plt.subplots(figsize=(12, 4))
-    t = st.session_state.trend_data["timestamps"][-100:]
-    for key in ["HR", "Temp", "SpO2", "RR", "Lactate", "BP_sys", "WBC"]:
-        y = st.session_state.trend_data[key][-100:]
-        ax.plot(t, y, label=key)
-    ax.legend()
-    ax.set_xticks(t[::max(1, len(t)//10)])
-    ax.set_xticklabels(t[::max(1, len(t)//10)], rotation=45)
-    st.pyplot(fig)
-
-st.caption("Auto-refreshing every 1 second · Sepsis focus · Simulated vitals")
+# Auto-refresh (simulate live data)
+time.sleep(REFRESH_INTERVAL)
+st.experimental_rerun()
