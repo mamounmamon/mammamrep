@@ -12,16 +12,14 @@ st_autorefresh = st.empty()
 REFRESH_INTERVAL = 1
 
 # Initialize session state
+expected_keys = ["timestamps", "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys"]
+
 if "trend_data" not in st.session_state:
-    st.session_state.trend_data = {
-        "timestamps": [],
-        "HR": [],
-        "Temp": [],
-        "RR": [],
-        "SpO2": [],
-        "Lactate": [],
-        "BP_sys": []
-    }
+    st.session_state.trend_data = {}
+
+for key in expected_keys:
+    if key not in st.session_state.trend_data:
+        st.session_state.trend_data[key] = []
 
 # Simulate new vitals
 def simulate_vitals():
