@@ -10,24 +10,24 @@ from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
 
-# Constants
 REFRESH_INTERVAL = 1
 MAX_HISTORY = 300
 
-# Auto-refresh placeholder
-st_autorefresh = st.empty()
+if "trend_data" not in st.session_state:
+    METRICS = [
+        "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
+        "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
+        "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
+    ]
+    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk"]}
 
-# Initialize state with all metrics
 METRICS = [
     "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
     "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
     "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
 ]
 
-if "trend_data" not in st.session_state:
-    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk"]}
-
-# Simulate vitals
+# Simulate vital signs
 def simulate_vitals():
     return {
         "HR": random.randint(60, 140),
@@ -50,7 +50,7 @@ def simulate_vitals():
         "PaCO2": round(random.uniform(25, 55), 1)
     }
 
-# Update vitals
+# Update data
 def update_data():
     now = datetime.datetime.now().strftime("%H:%M:%S")
     vitals = simulate_vitals()
@@ -58,14 +58,11 @@ def update_data():
     st.session_state.trend_data["timestamps"].append(now)
 
     for k, v in vitals.items():
-        if k in st.session_state.trend_data:
-            st.session_state.trend_data[k].append(v)
+        st.session_state.trend_data[k].append(v)
 
-    # Risk calculations
     sepsis_score = 0
     ards_score = 0
 
-    # Sepsis criteria
     if vitals["HR"] > 120 or vitals["HR"] < 60: sepsis_score += 1
     if vitals["Temp"] > 39 or vitals["Temp"] < 36: sepsis_score += 1
     if vitals["RR"] > 25 or vitals["RR"] < 12: sepsis_score += 1
@@ -79,7 +76,6 @@ def update_data():
     if vitals["MAP"] < 65: sepsis_score += 1
     if vitals["GCS"] < 13: sepsis_score += 1
 
-    # ARDS criteria (simplified)
     if vitals["FiO2"] > 50: ards_score += 1
     if vitals["pH"] < 7.3: ards_score += 1
     if vitals["PaCO2"] > 50: ards_score += 1
@@ -94,64 +90,73 @@ def update_data():
 
 update_data()
 
+# HEADER
 st.title("🧠 ICU Condition Intelligence Dashboard")
+st.caption("Live monitoring of critical ICU metrics & predictive risks")
 
-risk_col1, risk_col2 = st.columns(2)
-sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
-ards = st.session_state.trend_data["ARDS_Risk"][-1]
+# RISK ALERTS
+with st.container():
+    col1, col2 = st.columns(2)
+    sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
+    ards = st.session_state.trend_data["ARDS_Risk"][-1]
+    
+    if sepsis >= 80:
+        col1.error(f"🚨 High Sepsis Risk: {sepsis}%", icon="⚠️")
+    else:
+        col1.success(f"Sepsis Risk: {sepsis}%")
 
-if sepsis >= 80:
-    risk_col1.error("🚨 Sepsis Risk ≥ 80%! Action Required", icon="⚠️")
-if ards >= 75:
-    risk_col2.warning("⚠️ ARDS Risk High! Monitor Closely", icon="❗")
+    if ards >= 75:
+        col2.warning(f"⚠️ High ARDS Risk: {ards}%", icon="❗")
+    else:
+        col2.info(f"ARDS Risk: {ards}%")
 
-metrics_grid = st.columns(4)
-data = st.session_state.trend_data
-latest_values = {k: v[-1] for k, v in data.items() if k != "timestamps"}
+# CURRENT METRICS
+with st.expander("📟 Live Vitals", expanded=True):
+    cols = st.columns(4)
+    latest_values = {k: v[-1] for k, v in st.session_state.trend_data.items() if k != "timestamps"}
 
-for i, (k, v) in enumerate(latest_values.items()):
-    label = k.replace("_", " ")
-    metrics_grid[i % 4].metric(label, str(v))
+    for i, (k, v) in enumerate(latest_values.items()):
+        label = k.replace("_", " ")
+        color = "green"
+        if (k == "SpO2" and v < 90) or (k == "HR" and (v > 120 or v < 60)) or (k == "Temp" and (v < 36 or v > 39)):
+            color = "red"
+        cols[i % 4].metric(label=label, value=str(v), delta_color=color)
 
-with st.expander("📊 Cluster Insights", expanded=True):
-    if len(data["HR"]) >= 10:
-        df = pd.DataFrame(data)
+# CLUSTERING
+with st.expander("📊 Cluster Insights", expanded=False):
+    if len(st.session_state.trend_data["HR"]) >= 10:
+        df = pd.DataFrame(st.session_state.trend_data)
         scaler = StandardScaler()
         X = scaler.fit_transform(df[METRICS])
         kmeans = KMeans(n_clusters=3, random_state=42)
         df["Cluster"] = kmeans.fit_predict(X)
         st.write("### Clustered ICU Conditions")
-        cluster_counts = df["Cluster"].value_counts().sort_index()
-        st.bar_chart(cluster_counts)
-        st.write(df[["timestamps", "Cluster"] + METRICS].tail(10))
+        st.bar_chart(df["Cluster"].value_counts().sort_index())
+        st.dataframe(df[["timestamps", "Cluster"] + METRICS].tail(10))
     else:
-        st.info("Collecting more data to perform clustering...")
+        st.info("Waiting for enough data to perform clustering...")
 
-with st.expander("📈 Trend Analysis Charts", expanded=True):
-    fig, axs = plt.subplots(4, 2, figsize=(15, 10))
-    axes = axs.flatten()
-    for i, k in enumerate(METRICS[:8]):
-        axes[i].plot(data["timestamps"], data[k], label=k)
-        axes[i].set_title(k)
-        axes[i].tick_params(axis='x', rotation=45, labelsize=7)
-        axes[i].grid(True, linestyle='--', alpha=0.4)
-    plt.tight_layout()
+# TRENDS
+def draw_trend_chart(metric_list, title):
+    data = st.session_state.trend_data
+    fig, ax = plt.subplots(figsize=(12, 4))
+    for metric in metric_list:
+        ax.plot(data["timestamps"], data[metric], label=metric)
+    ax.legend()
+    ax.set_title(title)
+    ax.tick_params(axis='x', rotation=45)
+    ax.grid(True)
     st.pyplot(fig)
 
-    fig2, axs2 = plt.subplots(2, 1, figsize=(15, 5))
-    axs2[0].plot(data["timestamps"], data["Sepsis_Risk"], color="darkred", linewidth=2, label="Sepsis Risk")
-    axs2[1].plot(data["timestamps"], data["ARDS_Risk"], color="darkblue", linewidth=2, label="ARDS Risk")
-    for ax in axs2:
-        ax.set_ylim([0, 100])
-        ax.grid(True, linestyle=":", alpha=0.5)
-        ax.tick_params(axis='x', rotation=45, labelsize=7)
-    axs2[0].set_title("Sepsis Risk Trend")
-    axs2[1].set_title("ARDS Risk Trend")
-    plt.tight_layout()
-    st.pyplot(fig2)
+with st.expander("📈 Trend Analysis Charts", expanded=False):
+    draw_trend_chart(["HR", "RR", "Temp", "SpO2"], "🫁 Respiratory & Cardiovascular")
+    draw_trend_chart(["WBC", "Lactate", "Platelets"], "🧪 Sepsis Indicators")
+    draw_trend_chart(["Creatinine", "Bilirubin", "MAP", "GCS"], "🧠 Renal/Liver Function & Consciousness")
+    draw_trend_chart(["Sepsis_Risk", "ARDS_Risk"], "⚠️ Risk Scores Over Time")
 
+# EXPORT
 with st.expander("⬇️ Export Data"):
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(st.session_state.trend_data)
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="Download ICU Data as CSV",
