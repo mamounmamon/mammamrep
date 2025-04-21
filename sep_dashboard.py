@@ -58,7 +58,7 @@ def update_data():
     st.session_state.trend_data["timestamps"].append(now)
 
     for k, v in vitals.items():
-      #  st.session_state.trend_data[k].append(v)
+      st.session_state.trend_data[k].append(v)
 
     # Risk calculations
     sepsis_score = 0
@@ -92,7 +92,7 @@ def update_data():
         if len(st.session_state.trend_data[key]) > MAX_HISTORY:
             st.session_state.trend_data[key] = st.session_state.trend_data[key][-MAX_HISTORY:]
 
-# update_data()
+ update_data()
 
 # Layout
 st.title("🧠 ICU Condition Intelligence Dashboard")
