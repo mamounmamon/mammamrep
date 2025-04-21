@@ -5,6 +5,8 @@ import pandas as pd
 import random
 import time
 import datetime
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
 
@@ -110,6 +112,20 @@ latest_values = {k: v[-1] for k, v in data.items() if k != "timestamps"}
 for i, (k, v) in enumerate(latest_values.items()):
     label = k.replace("_", " ")
     metrics_grid[i % 4].metric(label, str(v))
+
+with st.expander("📊 Cluster Insights", expanded=True):
+    if len(data["HR"]) >= 10:
+        df = pd.DataFrame(data)
+        scaler = StandardScaler()
+        X = scaler.fit_transform(df[METRICS])
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        df["Cluster"] = kmeans.fit_predict(X)
+        st.write("### Clustered ICU Conditions")
+        cluster_counts = df["Cluster"].value_counts().sort_index()
+        st.bar_chart(cluster_counts)
+        st.write(df[["timestamps", "Cluster"] + METRICS].tail(10))
+    else:
+        st.info("Collecting more data to perform clustering...")
 
 with st.expander("📈 Trend Analysis Charts", expanded=True):
     fig, axs = plt.subplots(4, 2, figsize=(15, 10))
