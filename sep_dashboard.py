@@ -14,7 +14,7 @@ REFRESH_INTERVAL = 1
 # Initialize session state
 expected_keys = [
     "timestamps", "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
-    "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS"
+    "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS", "Risk"
 ]
 
 if "trend_data" not in st.session_state:
@@ -50,52 +50,42 @@ def update_data():
         st.session_state.trend_data[k].append(v)
         if len(st.session_state.trend_data[k]) > 300:
             st.session_state.trend_data[k].pop(0)
+
+    # Risk calculation
+    risk_score = 0
+    risk_score += 1 if vitals["HR"] > 120 or vitals["HR"] < 60 else 0
+    risk_score += 1 if vitals["Temp"] > 39 or vitals["Temp"] < 36 else 0
+    risk_score += 1 if vitals["RR"] > 25 or vitals["RR"] < 12 else 0
+    risk_score += 1 if vitals["SpO2"] < 90 else 0
+    risk_score += 1 if vitals["Lactate"] > 2.5 else 0
+    risk_score += 1 if vitals["BP_sys"] < 100 else 0
+    risk_score += 1 if vitals["WBC"] < 4 or vitals["WBC"] > 12 else 0
+    risk_score += 1 if vitals["Creatinine"] > 1.5 else 0
+    risk_score += 1 if vitals["Bilirubin"] > 2.0 else 0
+    risk_score += 1 if vitals["Platelets"] < 150 else 0
+    risk_score += 1 if vitals["MAP"] < 65 else 0
+    risk_score += 1 if vitals["GCS"] < 13 else 0
+
+    risk_percent = int((risk_score / 12) * 100)
+    st.session_state.trend_data["Risk"].append(risk_percent)
+    if len(st.session_state.trend_data["Risk"]) > 300:
+        st.session_state.trend_data["Risk"].pop(0)
+
     if len(st.session_state.trend_data["timestamps"]) > 300:
         st.session_state.trend_data["timestamps"].pop(0)
 
 update_data()
 
-# Calculate risk level
-latest = st.session_state.trend_data
-hr = latest["HR"][-1]
-temp = latest["Temp"][-1]
-rr = latest["RR"][-1]
-spo2 = latest["SpO2"][-1]
-lactate = latest["Lactate"][-1]
-bp = latest["BP_sys"][-1]
-map_ = latest["MAP"][-1]
-wbc = latest["WBC"][-1]
-creatinine = latest["Creatinine"][-1]
-bilirubin = latest["Bilirubin"][-1]
-platelets = latest["Platelets"][-1]
-gcs = latest["GCS"][-1]
-
-# Simple risk calculation based on thresholds
-risk_score = 0
-risk_score += 1 if hr > 120 or hr < 60 else 0
-risk_score += 1 if temp > 39 or temp < 36 else 0
-risk_score += 1 if rr > 25 or rr < 12 else 0
-risk_score += 1 if spo2 < 90 else 0
-risk_score += 1 if lactate > 2.5 else 0
-risk_score += 1 if bp < 100 else 0
-risk_score += 1 if wbc < 4 or wbc > 12 else 0
-risk_score += 1 if creatinine > 1.5 else 0
-risk_score += 1 if bilirubin > 2.0 else 0
-risk_score += 1 if platelets < 150 else 0
-risk_score += 1 if map_ < 65 else 0
-risk_score += 1 if gcs < 13 else 0
-
-risk_percent = int((risk_score / 12) * 100)
-if risk_percent < 30:
-    risk_color = "green"
-elif risk_percent < 70:
-    risk_color = "orange"
-else:
-    risk_color = "red"
+# Display risk alert
+current_risk = st.session_state.trend_data["Risk"][-1]
+if current_risk >= 80:
+    st.error("🚨 High Risk Alert: Risk exceeds 80%! Immediate attention required!", icon="⚠️")
 
 # Display dashboard
 st.title("🦠 Live Sepsis Monitoring Dashboard")
-st.markdown(f"### 🔥 Risk Level: <span style='color:{risk_color}; font-size: 24px;'>{risk_percent}%</span>", unsafe_allow_html=True)
+
+risk_color = "green" if current_risk < 30 else "orange" if current_risk < 70 else "red"
+st.markdown(f"### 🔥 Risk Level: <span style='color:{risk_color}; font-size: 24px;'>{current_risk}%</span>", unsafe_allow_html=True)
 
 # Vital metrics
 cols = st.columns(4)
@@ -119,7 +109,7 @@ metrics = [
 for i, (label, value) in enumerate(metrics):
     cols[i % 4].metric(label, value)
 
-# Combined trend chart
+# Combined vitals trend chart
 fig, ax = plt.subplots(figsize=(12, 5))
 colors = {
     "HR": "red", "Temp": "orange", "RR": "green",
@@ -128,16 +118,30 @@ colors = {
     "Bilirubin": "magenta", "MAP": "teal", "GCS": "black"
 }
 
-for key in expected_keys[1:]:  # Skip timestamps
-    ax.plot(data["timestamps"], data[key], label=key, color=colors[key], linewidth=1)
+for key in expected_keys[1:-1]:  # Skip timestamps and Risk
+    ax.plot(data["timestamps"], data[key], label=key, color=colors.get(key, "black"), linewidth=1)
 
-ax.set_xticks(data["timestamps"][::max(1, len(data["timestamps"])//8)])
-ax.set_xticklabels(data["timestamps"][::max(1, len(data["timestamps"])//8)], rotation=45, fontsize=8)
+ax.set_xticks(data["timestamps"][::max(1, len(data["timestamps"])//10)])
+ax.set_xticklabels(data["timestamps"][::max(1, len(data["timestamps"])//10)], rotation=45, fontsize=8)
 ax.set_facecolor("#f5f5f5")
+ax.grid(True, linestyle="--", alpha=0.4)
 ax.legend(loc="upper left", fontsize=7)
 ax.set_title("Sepsis Vital Trends (Live)", fontsize=12)
 st.pyplot(fig, use_container_width=True)
 
+# Risk trend line chart
+fig2, ax2 = plt.subplots(figsize=(12, 2.5))
+ax2.plot(data["timestamps"], data["Risk"], color="darkred", linewidth=2)
+ax2.axhline(y=80, color="red", linestyle="--", linewidth=1)
+ax2.axhline(y=50, color="orange", linestyle="--", linewidth=1)
+ax2.axhline(y=30, color="green", linestyle="--", linewidth=1)
+ax2.set_ylim([0, 100])
+ax2.set_xticks(data["timestamps"][::max(1, len(data["timestamps"])//10)])
+ax2.set_xticklabels(data["timestamps"][::max(1, len(data["timestamps"])//10)], rotation=45, fontsize=8)
+ax2.set_title("Risk Score Trend (%)", fontsize=11)
+ax2.grid(True, linestyle=":", alpha=0.6)
+st.pyplot(fig2, use_container_width=True)
+
 # Auto-refresh (simulate live data)
 time.sleep(REFRESH_INTERVAL)
-st.rerun()
+st.experimental_rerun()
