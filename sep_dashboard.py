@@ -171,4 +171,4 @@ if st.button("📥 Export Data CSV"):
 
 # Auto-refresh
 time.sleep(REFRESH_INTERVAL)
-st.experimental_rerun()
+st.rerun()
