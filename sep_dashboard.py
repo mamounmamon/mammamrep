@@ -1,191 +1,152 @@
-import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import random
-import time
-import datetime
-#from sklearn.cluster import KMeans
-#from sklearn.preprocessing import StandardScaler
+import React from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+import { motion } from "framer-motion";
 
-st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
+const COLORS = ["#8884d8", "#82ca9d", "#ffc658"];
 
-REFRESH_INTERVAL = 1
-MAX_HISTORY = 300
+const salesData = [
+  { name: "Jan", sales: 4000, profit: 2400 },
+  { name: "Feb", sales: 3000, profit: 1398 },
+  { name: "Mar", sales: 2000, profit: 9800 },
+  { name: "Apr", sales: 2780, profit: 3908 },
+  { name: "May", sales: 1890, profit: 4800 },
+  { name: "Jun", sales: 2390, profit: 3800 },
+];
 
-if "trend_data" not in st.session_state:
-    METRICS = [
-        "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
-        "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
-        "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
-    ]
-    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk", "Shock_Risk"]}
+const trafficData = [
+  { name: "Organic", value: 400 },
+  { name: "Paid", value: 300 },
+  { name: "Referral", value: 300 },
+];
 
-METRICS = [
-    "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
-    "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
-    "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
-]
+export default function EcommerceMarketingDashboard() {
+  return (
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <Tabs defaultValue="overview">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="traffic">Traffic</TabsTrigger>
+            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          </TabsList>
 
-# Simulate vital signs
-def simulate_vitals():
-    return {
-        "HR": random.randint(60, 140),
-        "Temp": round(random.uniform(36.0, 40.0), 1),
-        "RR": random.randint(10, 30),
-        "SpO2": random.randint(85, 100),
-        "Lactate": round(random.uniform(0.5, 4.5), 2),
-        "BP_sys": random.randint(90, 140),
-        "WBC": round(random.uniform(4.0, 15.0), 1),
-        "Platelets": random.randint(100, 400),
-        "Creatinine": round(random.uniform(0.5, 2.5), 2),
-        "Bilirubin": round(random.uniform(0.2, 3.0), 2),
-        "MAP": round(random.uniform(60, 100), 1),
-        "GCS": random.randint(3, 15),
-        "Glucose": round(random.uniform(3.0, 15.0), 1),
-        "Urine_Output": round(random.uniform(0.2, 2.5), 2),
-        "INR": round(random.uniform(0.9, 3.5), 2),
-        "FiO2": round(random.uniform(21, 100), 1),
-        "pH": round(random.uniform(7.2, 7.55), 2),
-        "PaCO2": round(random.uniform(25, 55), 1)
-    }
+          <TabsContent value="overview">
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Sales & Profit (Monthly)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="sales" fill="#8884d8" />
+                    <Bar dataKey="profit" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-# Update data
-def update_data():
-    now = datetime.datetime.now().strftime("%H:%M:%S")
-    vitals = simulate_vitals()
+          <TabsContent value="traffic">
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Traffic Sources</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={trafficData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      label
+                    >
+                      {trafficData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-    st.session_state.trend_data["timestamps"].append(now)
+          <TabsContent value="campaigns">
+            <Card className="col-span-3">
+              <CardHeader>
+                <CardTitle>Campaign Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="sales" stroke="#8884d8" />
+                    <Line type="monotone" dataKey="profit" stroke="#82ca9d" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
 
-    for k, v in vitals.items():
-        st.session_state.trend_data[k].append(v)
-
-    sepsis_score = 0
-    ards_score = 0
-    shock_score = 0
-
-    if vitals["HR"] > 120 or vitals["HR"] < 60: sepsis_score += 1
-    if vitals["Temp"] > 39 or vitals["Temp"] < 36: sepsis_score += 1
-    if vitals["RR"] > 25 or vitals["RR"] < 12: sepsis_score += 1
-    if vitals["SpO2"] < 90: sepsis_score += 1
-    if vitals["Lactate"] > 2.5: sepsis_score += 1
-    if vitals["BP_sys"] < 100: sepsis_score += 1
-    if vitals["WBC"] < 4 or vitals["WBC"] > 12: sepsis_score += 1
-    if vitals["Creatinine"] > 1.5: sepsis_score += 1
-    if vitals["Bilirubin"] > 2.0: sepsis_score += 1
-    if vitals["Platelets"] < 150: sepsis_score += 1
-    if vitals["MAP"] < 65: sepsis_score += 1
-    if vitals["GCS"] < 13: sepsis_score += 1
-
-    if vitals["FiO2"] > 50: ards_score += 1
-    if vitals["pH"] < 7.3: ards_score += 1
-    if vitals["PaCO2"] > 50: ards_score += 1
-    if vitals["SpO2"] < 90: ards_score += 1
-
-    if vitals["HR"] > 120 or vitals["HR"] < 50: shock_score += 1
-    if vitals["BP_sys"] < 90: shock_score += 1
-    if vitals["MAP"] < 60: shock_score += 1
-    if vitals["Lactate"] > 2.2: shock_score += 1
-    if vitals["Urine_Output"] < 0.5: shock_score += 1
-    if vitals["GCS"] < 12: shock_score += 1
-
-    st.session_state.trend_data["Sepsis_Risk"].append(int((sepsis_score / 12) * 100))
-    st.session_state.trend_data["ARDS_Risk"].append(int((ards_score / 4) * 100))
-    st.session_state.trend_data["Shock_Risk"].append(int((shock_score / 6) * 100))
-
-    for key in st.session_state.trend_data:
-        if len(st.session_state.trend_data[key]) > MAX_HISTORY:
-            st.session_state.trend_data[key] = st.session_state.trend_data[key][-MAX_HISTORY:]
-
-update_data()
-
-# HEADER
-st.title("🧠 ICU Condition Intelligence Dashboard")
-st.caption("Live monitoring of critical ICU metrics & predictive risks")
-
-# RISK ALERTS
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
-    ards = st.session_state.trend_data["ARDS_Risk"][-1]
-    shock = st.session_state.trend_data["Shock_Risk"][-1]
-
-    if sepsis >= 80:
-        col1.error(f"🚨 High Sepsis Risk: {sepsis}%", icon="⚠️")
-    else:
-        col1.success(f"Sepsis Risk: {sepsis}%")
-
-    if ards >= 75:
-        col2.warning(f"⚠️ High ARDS Risk: {ards}%", icon="❗")
-    else:
-        col2.info(f"ARDS Risk: {ards}%")
-
-    if shock >= 70:
-        col3.error(f"🩸 High Shock Risk: {shock}%", icon="⛔")
-    else:
-        col3.success(f"Shock Risk: {shock}%")
-
-# CURRENT METRICS
-with st.expander("📟 Live Vitals", expanded=True):
-    cols = st.columns(4)
-    latest_values = {k: v[-1] for k, v in st.session_state.trend_data.items() if k != "timestamps"}
-
-    for i, (k, v) in enumerate(latest_values.items()):
-        label = k.replace("_", " ")
-        color = "green"
-        if (k == "SpO2" and v < 90) or (k == "HR" and (v > 120 or v < 60)) or (k == "Temp" and (v < 36 or v > 39)):
-            color = "red"
-
-        previous = st.session_state.trend_data[k][-2] if len(st.session_state.trend_data[k]) > 1 else v
-        delta_value = round(v - previous, 2)
-
-        cols[i % 4].metric(label=label, value=str(v), delta=delta_value, delta_color=color)
-
-# CLUSTERING
-with st.expander("📊 Cluster Insights", expanded=False):
-    if len(st.session_state.trend_data["HR"]) >= 10:
-        df = pd.DataFrame(st.session_state.trend_data)
-        scaler = StandardScaler()
-        X = scaler.fit_transform(df[METRICS])
-        kmeans = KMeans(n_clusters=3, random_state=42)
-        df["Cluster"] = kmeans.fit_predict(X)
-        st.write("### Clustered ICU Conditions")
-        st.bar_chart(df["Cluster"].value_counts().sort_index())
-        st.dataframe(df[["timestamps", "Cluster"] + METRICS].tail(10))
-    else:
-        st.info("Waiting for enough data to perform clustering...")
-
-# TRENDS
-def draw_trend_chart(metric_list, title):
-    data = st.session_state.trend_data
-    fig, ax = plt.subplots(figsize=(12, 4))
-    for metric in metric_list:
-        ax.plot(data["timestamps"], data[metric], label=metric)
-    ax.legend()
-    ax.set_title(title)
-    ax.tick_params(axis='x', rotation=45)
-    ax.grid(True)
-    st.pyplot(fig)
-
-with st.expander("📈 Trend Analysis Charts", expanded=False):
-    draw_trend_chart(["HR", "RR", "Temp", "SpO2"], "🫁 Respiratory & Cardiovascular")
-    draw_trend_chart(["WBC", "Lactate", "Platelets"], "🧪 Sepsis Indicators")
-    draw_trend_chart(["Creatinine", "Bilirubin", "MAP", "GCS"], "🧠 Renal/Liver Function & Consciousness")
-    draw_trend_chart(["Sepsis_Risk", "ARDS_Risk", "Shock_Risk"], "⚠️ Risk Scores Over Time")
-
-# EXPORT
-with st.expander("⬇️ Export Data"):
-    df = pd.DataFrame(st.session_state.trend_data)
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="Download ICU Data as CSV",
-        data=csv,
-        file_name="icu_data.csv",
-        mime="text/csv"
-    )
-
-if st.button("Stop Refresh"):
-    st.stop()
-else:
-    time.sleep(REFRESH_INTERVAL)
-    st.experimental_rerun()
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="col-span-1 xl:col-span-1"
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>Search Products</CardTitle>
+          </CardHeader>
+          <CardContent className="flex gap-2">
+            <Input placeholder="Search by name or category..." />
+            <Button variant="secondary">
+              <Search className="w-4 h-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
