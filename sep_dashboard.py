@@ -7,8 +7,8 @@ import datetime
 
 st.set_page_config(layout="wide", page_title="ICU Live Dashboard")
 
-# Auto-refresh every 5 seconds
-REFRESH_INTERVAL = 5
+# Auto-refresh every 1 second
+REFRESH_INTERVAL = 1
 if "last_refresh_time" not in st.session_state:
     st.session_state.last_refresh_time = time.time()
 
@@ -55,7 +55,7 @@ icu_conditions = [
 ]
 
 MAX_HISTORY_HOURS = 24
-DATA_INTERVAL_MINUTES = 5
+DATA_INTERVAL_MINUTES = 1
 MAX_DATA_POINTS = MAX_HISTORY_HOURS * 60 // DATA_INTERVAL_MINUTES
 
 if "trend_data" not in st.session_state:
@@ -102,21 +102,21 @@ def plot_combined_trends(condition):
         "HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue",
         "Lactate": "purple", "BP_sys": "gray"
     }
-    fig, ax = plt.subplots(figsize=(7, 2.5))
+    fig, ax = plt.subplots(figsize=(6, 2.5))
 
     for key in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys"]:
         values = data[key][-MAX_DATA_POINTS:]
-        ax.plot(timestamps, values, label=key, color=colors[key], linewidth=2)
+        ax.plot(timestamps, values, label=key, color=colors[key], linewidth=1.5)
 
     if len(timestamps) > 4:
-        ax.set_xticks(timestamps[::len(timestamps)//4])
-        ax.set_xticklabels(timestamps[::len(timestamps)//4], rotation=45, fontsize=6)
+        ax.set_xticks(timestamps[::max(1, len(timestamps)//4)])
+        ax.set_xticklabels(timestamps[::max(1, len(timestamps)//4)], rotation=45, fontsize=6)
     else:
         ax.set_xticks([])
 
     ax.set_yticks([])
     ax.set_facecolor("#f7f7f7")
-    ax.legend(fontsize=7, loc="upper left")
+    ax.legend(fontsize=6, loc="upper left")
     st.pyplot(fig, use_container_width=True)
 
 cols = st.columns(3)
@@ -126,7 +126,7 @@ for idx, condition in enumerate(icu_conditions):
     alert, alert_class = alert_level(vitals)
 
     data = st.session_state.trend_data[condition]
-    now = datetime.datetime.now().strftime("%H:%M")
+    now = datetime.datetime.now().strftime("%H:%M:%S")
     data["timestamps"].append(now)
     for k in vitals:
         if k in data:
@@ -152,4 +152,4 @@ for idx, condition in enumerate(icu_conditions):
             plot_combined_trends(condition)
             st.markdown("</div>", unsafe_allow_html=True)
 
-st.caption("Auto-refreshing every 5 seconds · Monitoring 24h vitals · Simulated data for 12 ICU risk profiles")
+st.caption("Auto-refreshing every 1 second · Monitoring 24h vitals · Simulated data for 12 ICU risk profiles")
