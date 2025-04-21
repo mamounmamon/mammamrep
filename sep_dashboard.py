@@ -102,31 +102,34 @@ def plot_combined_trends(condition):
         "HR": "red", "Temp": "orange", "RR": "green", "SpO2": "blue",
         "Lactate": "purple", "BP_sys": "gray"
     }
-    fig, ax = plt.subplots(figsize=(6, 2.5))
+    fig, ax = plt.subplots(figsize=(8, 3))
 
     for key in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys"]:
         values = data[key][-MAX_DATA_POINTS:]
         ax.plot(timestamps, values, label=key, color=colors[key], linewidth=1.5)
 
     if len(timestamps) > 4:
-        ax.set_xticks(timestamps[::max(1, len(timestamps)//4)])
-        ax.set_xticklabels(timestamps[::max(1, len(timestamps)//4)], rotation=45, fontsize=6)
+        ax.set_xticks(timestamps[::max(1, len(timestamps)//6)])
+        ax.set_xticklabels(timestamps[::max(1, len(timestamps)//6)], rotation=45, fontsize=7)
     else:
         ax.set_xticks([])
 
     ax.set_yticks([])
     ax.set_facecolor("#f7f7f7")
-    ax.legend(fontsize=6, loc="upper left")
+    ax.legend(fontsize=7, loc="upper left")
     st.pyplot(fig, use_container_width=True)
 
-cols = st.columns(3)
+selected_condition = st.selectbox("Select Primary Condition to Monitor:", icu_conditions, index=0)
 
-for idx, condition in enumerate(icu_conditions):
+# Main panel layout
+left, right = st.columns([2, 1])
+
+# Update vitals and time series for all conditions
+now = datetime.datetime.now().strftime("%H:%M:%S")
+for condition in icu_conditions:
     vitals = simulate_vitals()
     alert, alert_class = alert_level(vitals)
-
     data = st.session_state.trend_data[condition]
-    now = datetime.datetime.now().strftime("%H:%M:%S")
     data["timestamps"].append(now)
     for k in vitals:
         if k in data:
@@ -136,20 +139,37 @@ for idx, condition in enumerate(icu_conditions):
     if len(data["timestamps"]) > MAX_DATA_POINTS:
         data["timestamps"].pop(0)
 
-    with cols[idx % 3]:
-        with st.container():
-            st.markdown(f"<div class='card'>", unsafe_allow_html=True)
-            st.markdown(f"**{condition}** <span class='{alert_class}'>{alert}</span>", unsafe_allow_html=True)
+# Display main selected condition
+with left:
+    vitals = st.session_state.trend_data[selected_condition]
+    alert, alert_class = alert_level({k: v[-1] for k, v in vitals.items() if k != "timestamps"})
+    st.markdown(f"<div class='card'><h4>{selected_condition}</h4><span class='{alert_class}'>{alert}</span>", unsafe_allow_html=True)
 
+    col1, col2, col3 = st.columns(3)
+    col1.metric("HR", f"{vitals['HR'][-1]} bpm")
+    col2.metric("BP", f"{vitals['BP'][-1]}")
+    col3.metric("Temp", f"{vitals['Temp'][-1]} °C")
+    col1.metric("SpO₂", f"{vitals['SpO2'][-1]}%")
+    col2.metric("RR", f"{vitals['RR'][-1]}")
+    col3.metric("Lactate", f"{vitals['Lactate'][-1]} mmol/L")
+
+    plot_combined_trends(selected_condition)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# Display mini-widgets for other conditions
+with right:
+    for condition in icu_conditions:
+        if condition == selected_condition:
+            continue
+        vitals = st.session_state.trend_data[condition]
+        alert, alert_class = alert_level({k: v[-1] for k, v in vitals.items() if k != "timestamps"})
+        with st.expander(f"{condition} ({alert})", expanded=False):
             col1, col2, col3 = st.columns(3)
-            col1.metric("HR", f"{vitals['HR']} bpm")
-            col2.metric("BP", vitals["BP"])
-            col3.metric("Temp", f"{vitals['Temp']} °C")
-            col1.metric("SpO₂", f"{vitals['SpO2']}%")
-            col2.metric("RR", f"{vitals['RR']}")
-            col3.metric("Lactate", f"{vitals['Lactate']} mmol/L")
-
-            plot_combined_trends(condition)
-            st.markdown("</div>", unsafe_allow_html=True)
+            col1.metric("HR", f"{vitals['HR'][-1]} bpm")
+            col2.metric("BP", f"{vitals['BP'][-1]}")
+            col3.metric("Temp", f"{vitals['Temp'][-1]} °C")
+            col1.metric("SpO₂", f"{vitals['SpO2'][-1]}%")
+            col2.metric("RR", f"{vitals['RR'][-1]}")
+            col3.metric("Lactate", f"{vitals['Lactate'][-1]} mmol/L")
 
 st.caption("Auto-refreshing every 1 second · Monitoring 24h vitals · Simulated data for 12 ICU risk profiles")
