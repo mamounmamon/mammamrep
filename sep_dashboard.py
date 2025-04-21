@@ -99,7 +99,7 @@ with st.container():
     col1, col2 = st.columns(2)
     sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
     ards = st.session_state.trend_data["ARDS_Risk"][-1]
-    
+
     if sepsis >= 80:
         col1.error(f"🚨 High Sepsis Risk: {sepsis}%", icon="⚠️")
     else:
@@ -165,5 +165,8 @@ with st.expander("⬇️ Export Data"):
         mime="text/csv"
     )
 
-time.sleep(REFRESH_INTERVAL)
-st.rerun()
+if st.button("Stop Refresh"):
+    st.stop()
+else:
+    time.sleep(REFRESH_INTERVAL)
+    st.rerun()
