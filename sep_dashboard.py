@@ -47,8 +47,35 @@ def update_data():
 
 update_data()
 
+# Calculate risk level
+latest = st.session_state.trend_data
+hr = latest["HR"][-1]
+temp = latest["Temp"][-1]
+rr = latest["RR"][-1]
+spo2 = latest["SpO2"][-1]
+lactate = latest["Lactate"][-1]
+bp = latest["BP_sys"][-1]
+
+# Simple risk calculation based on thresholds
+risk_score = 0
+risk_score += 1 if hr > 120 or hr < 60 else 0
+risk_score += 1 if temp > 39 or temp < 36 else 0
+risk_score += 1 if rr > 25 or rr < 12 else 0
+risk_score += 1 if spo2 < 90 else 0
+risk_score += 1 if lactate > 2.5 else 0
+risk_score += 1 if bp < 100 else 0
+
+risk_percent = int((risk_score / 6) * 100)
+if risk_percent < 30:
+    risk_color = "green"
+elif risk_percent < 70:
+    risk_color = "orange"
+else:
+    risk_color = "red"
+
 # Display dashboard
 st.title("🦠 Live Sepsis Monitoring Dashboard")
+st.markdown(f"### 🔥 Risk Level: <span style='color:{risk_color}; font-size: 24px;'>{risk_percent}%</span>", unsafe_allow_html=True)
 
 # Vital metrics
 col1, col2, col3 = st.columns(3)
@@ -82,4 +109,4 @@ st.pyplot(fig, use_container_width=True)
 
 # Auto-refresh (simulate live data)
 time.sleep(REFRESH_INTERVAL)
-st.rerun()
+st.experimental_rerun()
