@@ -145,4 +145,4 @@ with st.expander("⬇️ Export Data"):
     )
 
 time.sleep(REFRESH_INTERVAL)
-st.experimental_rerun()
+st.rerun()
