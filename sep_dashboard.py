@@ -1,174 +1,156 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import random
 import time
 import datetime
-import pandas as pd
 
-st.set_page_config(layout="wide", page_title="Enhanced ICU Dashboard")
+st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
 
-# Auto-refresh interval
+# Constants
 REFRESH_INTERVAL = 1
+MAX_HISTORY = 300
+
+# Auto-refresh placeholder
 st_autorefresh = st.empty()
 
-# Session state setup
-metrics_keys = [
-    "timestamps", "HR", "Temp", "RR", "SpO2", "FiO2", "BP_sys", "BP_dia", "PulsePressure", "MAP",
-    "Lactate", "WBC", "Platelets", "Creatinine", "Bilirubin", "Glucose", "CRP", "ALT", "AST",
-    "GCS", "SOFA", "qSOFA", "NEWS2", "Risk"
+# Initialize state with all metrics
+METRICS = [
+    "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
+    "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
+    "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2", "Sepsis_Risk", "ARDS_Risk"
 ]
 
 if "trend_data" not in st.session_state:
-    st.session_state.trend_data = {}
+    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS}
 
-for key in metrics_keys:
-    if key not in st.session_state.trend_data:
-        st.session_state.trend_data[key] = []
+# Simulate vitals
 
-# Simulated vitals
 def simulate_vitals():
-    bp_sys = random.randint(90, 140)
-    bp_dia = random.randint(60, 90)
-    pulse_pressure = bp_sys - bp_dia
-    map_val = round((bp_sys + 2 * bp_dia) / 3, 1)
     return {
         "HR": random.randint(60, 140),
         "Temp": round(random.uniform(36.0, 40.0), 1),
         "RR": random.randint(10, 30),
         "SpO2": random.randint(85, 100),
-        "FiO2": random.choice([21, 30, 40, 50, 60, 80, 100]),
-        "BP_sys": bp_sys,
-        "BP_dia": bp_dia,
-        "PulsePressure": pulse_pressure,
-        "MAP": map_val,
         "Lactate": round(random.uniform(0.5, 4.5), 2),
+        "BP_sys": random.randint(90, 140),
         "WBC": round(random.uniform(4.0, 15.0), 1),
         "Platelets": random.randint(100, 400),
         "Creatinine": round(random.uniform(0.5, 2.5), 2),
         "Bilirubin": round(random.uniform(0.2, 3.0), 2),
-        "Glucose": round(random.uniform(3.0, 12.0), 1),
-        "CRP": round(random.uniform(1, 200), 1),
-        "ALT": round(random.uniform(10, 100), 1),
-        "AST": round(random.uniform(10, 100), 1),
-        "GCS": random.randint(3, 15)
+        "MAP": round(random.uniform(60, 100), 1),
+        "GCS": random.randint(3, 15),
+        "Glucose": round(random.uniform(3.0, 15.0), 1),
+        "Urine_Output": round(random.uniform(0.2, 2.5), 2),
+        "INR": round(random.uniform(0.9, 3.5), 2),
+        "FiO2": round(random.uniform(21, 100), 1),
+        "pH": round(random.uniform(7.2, 7.55), 2),
+        "PaCO2": round(random.uniform(25, 55), 1)
     }
 
-# Risk scoring (simplified)
-def calculate_risk(v):
-    score = 0
-    score += 1 if v["HR"] > 120 or v["HR"] < 60 else 0
-    score += 1 if v["Temp"] > 39 or v["Temp"] < 36 else 0
-    score += 1 if v["RR"] > 25 or v["RR"] < 12 else 0
-    score += 1 if v["SpO2"] < 90 else 0
-    score += 1 if v["Lactate"] > 2.5 else 0
-    score += 1 if v["BP_sys"] < 100 else 0
-    score += 1 if v["WBC"] < 4 or v["WBC"] > 12 else 0
-    score += 1 if v["Creatinine"] > 1.5 else 0
-    score += 1 if v["Bilirubin"] > 2.0 else 0
-    score += 1 if v["Platelets"] < 150 else 0
-    score += 1 if v["MAP"] < 65 else 0
-    score += 1 if v["GCS"] < 13 else 0
-    return int((score / 12) * 100)
+# Update vitals
 
 def update_data():
     now = datetime.datetime.now().strftime("%H:%M:%S")
-    v = simulate_vitals()
+    vitals = simulate_vitals()
+
     st.session_state.trend_data["timestamps"].append(now)
 
-    for k, val in v.items():
-        st.session_state.trend_data[k].append(val)
+    for k, v in vitals.items():
+        st.session_state.trend_data[k].append(v)
 
-    st.session_state.trend_data["SOFA"].append(random.randint(0, 24))
-    st.session_state.trend_data["qSOFA"].append(random.randint(0, 3))
-    st.session_state.trend_data["NEWS2"].append(random.randint(0, 20))
+    # Risk calculations
+    sepsis_score = 0
+    ards_score = 0
 
-    risk = calculate_risk(v)
-    st.session_state.trend_data["Risk"].append(risk)
+    # Sepsis criteria
+    if vitals["HR"] > 120 or vitals["HR"] < 60: sepsis_score += 1
+    if vitals["Temp"] > 39 or vitals["Temp"] < 36: sepsis_score += 1
+    if vitals["RR"] > 25 or vitals["RR"] < 12: sepsis_score += 1
+    if vitals["SpO2"] < 90: sepsis_score += 1
+    if vitals["Lactate"] > 2.5: sepsis_score += 1
+    if vitals["BP_sys"] < 100: sepsis_score += 1
+    if vitals["WBC"] < 4 or vitals["WBC"] > 12: sepsis_score += 1
+    if vitals["Creatinine"] > 1.5: sepsis_score += 1
+    if vitals["Bilirubin"] > 2.0: sepsis_score += 1
+    if vitals["Platelets"] < 150: sepsis_score += 1
+    if vitals["MAP"] < 65: sepsis_score += 1
+    if vitals["GCS"] < 13: sepsis_score += 1
 
-    # Trim data
-    max_len = 300
-    for key in metrics_keys:
-        if len(st.session_state.trend_data[key]) > max_len:
-            st.session_state.trend_data[key] = st.session_state.trend_data[key][-max_len:]
+    # ARDS criteria (simplified)
+    if vitals["FiO2"] > 50: ards_score += 1
+    if vitals["pH"] < 7.3: ards_score += 1
+    if vitals["PaCO2"] > 50: ards_score += 1
+    if vitals["SpO2"] < 90: ards_score += 1
+
+    st.session_state.trend_data["Sepsis_Risk"].append(int((sepsis_score / 12) * 100))
+    st.session_state.trend_data["ARDS_Risk"].append(int((ards_score / 4) * 100))
+
+    # Truncate history
+    for key in st.session_state.trend_data:
+        if len(st.session_state.trend_data[key]) > MAX_HISTORY:
+            st.session_state.trend_data[key] = st.session_state.trend_data[key][-MAX_HISTORY:]
 
 update_data()
+
+# Layout
+st.title("🧠 ICU Condition Intelligence Dashboard")
+
+# Alerts
+risk_col1, risk_col2 = st.columns(2)
+sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
+ards = st.session_state.trend_data["ARDS_Risk"][-1]
+
+if sepsis >= 80:
+    risk_col1.error("🚨 Sepsis Risk ≥ 80%! Action Required", icon="⚠️")
+if ards >= 75:
+    risk_col2.warning("⚠️ ARDS Risk High! Monitor Closely", icon="❗")
+
+# Key metrics
+metrics_grid = st.columns(4)
 data = st.session_state.trend_data
+latest_values = {k: v[-1] for k, v in data.items() if k != "timestamps"}
 
-# HEADER + ALERT
-st.title("🧠 Enhanced ICU Monitoring Dashboard")
-current_risk = data["Risk"][-1]
-risk_color = "green" if current_risk < 30 else "orange" if current_risk < 70 else "red"
-if current_risk >= 80:
-    st.error("🚨 Critical Risk: Immediate clinical review required!", icon="⚠️")
-st.markdown(f"### 🔥 Current Risk: <span style='color:{risk_color}; font-size: 24px;'>{current_risk}%</span>", unsafe_allow_html=True)
+for i, (k, v) in enumerate(latest_values.items()):
+    label = k.replace("_", " ")
+    metrics_grid[i % 4].metric(label, str(v))
 
-# METRICS VIEW
-panels = st.columns(4)
+# Trend plots
+with st.expander("📈 Trend Analysis Charts", expanded=True):
+    fig, axs = plt.subplots(4, 2, figsize=(15, 10))
+    axes = axs.flatten()
+    for i, k in enumerate(METRICS[:8]):
+        axes[i].plot(data["timestamps"], data[k], label=k)
+        axes[i].set_title(k)
+        axes[i].tick_params(axis='x', rotation=45, labelsize=7)
+        axes[i].grid(True, linestyle='--', alpha=0.4)
+    plt.tight_layout()
+    st.pyplot(fig)
 
-def show_metrics(label, value, col):
-    col.metric(label, value)
+    fig2, axs2 = plt.subplots(2, 1, figsize=(15, 5))
+    axs2[0].plot(data["timestamps"], data["Sepsis_Risk"], color="darkred", linewidth=2, label="Sepsis Risk")
+    axs2[1].plot(data["timestamps"], data["ARDS_Risk"], color="darkblue", linewidth=2, label="ARDS Risk")
+    for ax in axs2:
+        ax.set_ylim([0, 100])
+        ax.grid(True, linestyle=":", alpha=0.5)
+        ax.tick_params(axis='x', rotation=45, labelsize=7)
+    axs2[0].set_title("Sepsis Risk Trend")
+    axs2[1].set_title("ARDS Risk Trend")
+    plt.tight_layout()
+    st.pyplot(fig2)
 
-metrics = [
-    ("HR", f"{data['HR'][-1]} bpm"),
-    ("Temp", f"{data['Temp'][-1]} °C"),
-    ("RR", f"{data['RR'][-1]} bpm"),
-    ("SpO₂", f"{data['SpO2'][-1]} %"),
-    ("FiO₂", f"{data['FiO2'][-1]} %"),
-    ("Systolic BP", f"{data['BP_sys'][-1]} mmHg"),
-    ("Diastolic BP", f"{data['BP_dia'][-1]} mmHg"),
-    ("Pulse Pressure", f"{data['PulsePressure'][-1]} mmHg"),
-    ("MAP", f"{data['MAP'][-1]} mmHg"),
-    ("Lactate", f"{data['Lactate'][-1]} mmol/L"),
-    ("WBC", f"{data['WBC'][-1]} x10⁹/L"),
-    ("Platelets", f"{data['Platelets'][-1]} x10⁹/L"),
-    ("Creatinine", f"{data['Creatinine'][-1]} mg/dL"),
-    ("Bilirubin", f"{data['Bilirubin'][-1]} mg/dL"),
-    ("Glucose", f"{data['Glucose'][-1]} mmol/L"),
-    ("CRP", f"{data['CRP'][-1]} mg/L"),
-    ("ALT", f"{data['ALT'][-1]} U/L"),
-    ("AST", f"{data['AST'][-1]} U/L"),
-    ("GCS", f"{data['GCS'][-1]}"),
-    ("SOFA", f"{data['SOFA'][-1]}"),
-    ("qSOFA", f"{data['qSOFA'][-1]}"),
-    ("NEWS2", f"{data['NEWS2'][-1]}")
-]
-
-for i, (label, val) in enumerate(metrics):
-    show_metrics(label, val, panels[i % 4])
-
-# GRAPHS
-fig, ax = plt.subplots(figsize=(12, 5))
-plot_keys = ["HR", "Temp", "RR", "SpO2", "MAP", "Lactate", "Creatinine"]
-colors = ["red", "orange", "green", "blue", "purple", "brown", "black"]
-
-for i, key in enumerate(plot_keys):
-    ax.plot(data["timestamps"], data[key], label=key, color=colors[i], linewidth=1)
-
-ax.set_xticks(data["timestamps"][::max(1, len(data["timestamps"])//10)])
-ax.set_xticklabels(data["timestamps"][::max(1, len(data["timestamps"])//10)], rotation=45, fontsize=8)
-ax.legend(loc="upper left", fontsize=7)
-ax.set_title("Vital Trends", fontsize=12)
-ax.grid(True, linestyle="--", alpha=0.4)
-ax.set_facecolor("#f5f5f5")
-st.pyplot(fig, use_container_width=True)
-
-# RISK TREND
-fig2, ax2 = plt.subplots(figsize=(12, 2.5))
-ax2.plot(data["timestamps"], data["Risk"], color="darkred", linewidth=2)
-ax2.axhline(y=80, color="red", linestyle="--")
-ax2.set_ylim([0, 100])
-ax2.set_xticks(data["timestamps"][::max(1, len(data["timestamps"])//10)])
-ax2.set_xticklabels(data["timestamps"][::max(1, len(data["timestamps"])//10)], rotation=45, fontsize=8)
-ax2.set_title("Risk Score Trend (%)")
-ax2.grid(True, linestyle=":", alpha=0.6)
-st.pyplot(fig2, use_container_width=True)
-
-# EXPORT OPTION
-if st.button("📥 Export Data CSV"):
+# Data Export
+with st.expander("⬇️ Export Data"):
     df = pd.DataFrame(data)
-    st.download_button("Download CSV", df.to_csv(index=False), file_name="icu_dashboard_data.csv")
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="Download ICU Data as CSV",
+        data=csv,
+        file_name="icu_data.csv",
+        mime="text/csv"
+    )
 
-# Auto-refresh
+# Refresh page
 time.sleep(REFRESH_INTERVAL)
 st.rerun()
