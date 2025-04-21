@@ -109,4 +109,4 @@ st.pyplot(fig, use_container_width=True)
 
 # Auto-refresh (simulate live data)
 time.sleep(REFRESH_INTERVAL)
-st.experimental_rerun()
+st.rerun()
