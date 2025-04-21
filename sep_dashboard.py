@@ -45,11 +45,13 @@ def simulate_vitals():
 def update_data():
     now = datetime.datetime.now().strftime("%H:%M:%S")
     vitals = simulate_vitals()
+
+    # Ensure timestamps are updated first
     st.session_state.trend_data["timestamps"].append(now)
+
+    # Store vitals
     for k, v in vitals.items():
         st.session_state.trend_data[k].append(v)
-        if len(st.session_state.trend_data[k]) > 300:
-            st.session_state.trend_data[k].pop(0)
 
     # Risk calculation
     risk_score = 0
@@ -68,11 +70,12 @@ def update_data():
 
     risk_percent = int((risk_score / 12) * 100)
     st.session_state.trend_data["Risk"].append(risk_percent)
-    if len(st.session_state.trend_data["Risk"]) > 300:
-        st.session_state.trend_data["Risk"].pop(0)
 
-    if len(st.session_state.trend_data["timestamps"]) > 300:
-        st.session_state.trend_data["timestamps"].pop(0)
+    # Trim all lists to the same length (max 300)
+    max_len = 300
+    for key in expected_keys:
+        if len(st.session_state.trend_data[key]) > max_len:
+            st.session_state.trend_data[key] = st.session_state.trend_data[key][-max_len:]
 
 update_data()
 
@@ -144,4 +147,4 @@ st.pyplot(fig2, use_container_width=True)
 
 # Auto-refresh (simulate live data)
 time.sleep(REFRESH_INTERVAL)
-st.experimental_rerun()
+st.rerun()
