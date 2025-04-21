@@ -5,8 +5,8 @@ import pandas as pd
 import random
 import time
 import datetime
-# from sklearn.cluster import KMeans
-# from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
 
@@ -19,7 +19,7 @@ if "trend_data" not in st.session_state:
         "WBC", "Platelets", "Creatinine", "Bilirubin", "MAP", "GCS",
         "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
     ]
-    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk"]}
+    st.session_state.trend_data = {metric: [] for metric in ["timestamps"] + METRICS + ["Sepsis_Risk", "ARDS_Risk", "Shock_Risk"]}
 
 METRICS = [
     "HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys",
@@ -62,6 +62,7 @@ def update_data():
 
     sepsis_score = 0
     ards_score = 0
+    shock_score = 0
 
     if vitals["HR"] > 120 or vitals["HR"] < 60: sepsis_score += 1
     if vitals["Temp"] > 39 or vitals["Temp"] < 36: sepsis_score += 1
@@ -81,8 +82,16 @@ def update_data():
     if vitals["PaCO2"] > 50: ards_score += 1
     if vitals["SpO2"] < 90: ards_score += 1
 
+    if vitals["HR"] > 120 or vitals["HR"] < 50: shock_score += 1
+    if vitals["BP_sys"] < 90: shock_score += 1
+    if vitals["MAP"] < 60: shock_score += 1
+    if vitals["Lactate"] > 2.2: shock_score += 1
+    if vitals["Urine_Output"] < 0.5: shock_score += 1
+    if vitals["GCS"] < 12: shock_score += 1
+
     st.session_state.trend_data["Sepsis_Risk"].append(int((sepsis_score / 12) * 100))
     st.session_state.trend_data["ARDS_Risk"].append(int((ards_score / 4) * 100))
+    st.session_state.trend_data["Shock_Risk"].append(int((shock_score / 6) * 100))
 
     for key in st.session_state.trend_data:
         if len(st.session_state.trend_data[key]) > MAX_HISTORY:
@@ -96,9 +105,10 @@ st.caption("Live monitoring of critical ICU metrics & predictive risks")
 
 # RISK ALERTS
 with st.container():
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     sepsis = st.session_state.trend_data["Sepsis_Risk"][-1]
     ards = st.session_state.trend_data["ARDS_Risk"][-1]
+    shock = st.session_state.trend_data["Shock_Risk"][-1]
 
     if sepsis >= 80:
         col1.error(f"🚨 High Sepsis Risk: {sepsis}%", icon="⚠️")
@@ -110,6 +120,11 @@ with st.container():
     else:
         col2.info(f"ARDS Risk: {ards}%")
 
+    if shock >= 70:
+        col3.error(f"🩸 High Shock Risk: {shock}%", icon="⛔")
+    else:
+        col3.success(f"Shock Risk: {shock}%")
+
 # CURRENT METRICS
 with st.expander("📟 Live Vitals", expanded=True):
     cols = st.columns(4)
@@ -120,7 +135,11 @@ with st.expander("📟 Live Vitals", expanded=True):
         color = "green"
         if (k == "SpO2" and v < 90) or (k == "HR" and (v > 120 or v < 60)) or (k == "Temp" and (v < 36 or v > 39)):
             color = "red"
-        cols[i % 4].metric(label=label, value=str(v), delta_color=color)
+
+        previous = st.session_state.trend_data[k][-2] if len(st.session_state.trend_data[k]) > 1 else v
+        delta_value = round(v - previous, 2)
+
+        cols[i % 4].metric(label=label, value=str(v), delta=delta_value, delta_color=color)
 
 # CLUSTERING
 with st.expander("📊 Cluster Insights", expanded=False):
@@ -152,7 +171,7 @@ with st.expander("📈 Trend Analysis Charts", expanded=False):
     draw_trend_chart(["HR", "RR", "Temp", "SpO2"], "🫁 Respiratory & Cardiovascular")
     draw_trend_chart(["WBC", "Lactate", "Platelets"], "🧪 Sepsis Indicators")
     draw_trend_chart(["Creatinine", "Bilirubin", "MAP", "GCS"], "🧠 Renal/Liver Function & Consciousness")
-    draw_trend_chart(["Sepsis_Risk", "ARDS_Risk"], "⚠️ Risk Scores Over Time")
+    draw_trend_chart(["Sepsis_Risk", "ARDS_Risk", "Shock_Risk"], "⚠️ Risk Scores Over Time")
 
 # EXPORT
 with st.expander("⬇️ Export Data"):
@@ -169,4 +188,4 @@ if st.button("Stop Refresh"):
     st.stop()
 else:
     time.sleep(REFRESH_INTERVAL)
-    st.rerun()
+    st.experimental_rerun()
