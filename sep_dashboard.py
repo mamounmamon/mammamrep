@@ -61,9 +61,10 @@ MAX_DATA_POINTS = MAX_HISTORY_HOURS * 60 // DATA_INTERVAL_MINUTES
 if "trend_data" not in st.session_state:
     st.session_state.trend_data = {}
     for cond in icu_conditions:
-        st.session_state.trend_data[cond] = {
-            "HR": [], "Temp": [], "RR": [], "SpO2": [], "Lactate": [], "BP_sys": [], "BP_dia": [], "timestamps": []
-        }
+        st.session_state.trend_data[cond] = {}
+        for vital in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys", "BP_dia", "BP"]:
+            st.session_state.trend_data[cond][vital] = []
+        st.session_state.trend_data[cond]["timestamps"] = []
 
 def simulate_vitals():
     bp_sys = random.randint(90, 140)
@@ -86,7 +87,7 @@ def alert_level(v):
     score += v["SpO2"] < 92
     score += v["Lactate"] > 2.5
     score += v["BP_sys"] < 95
-    
+
     if score >= 4:
         return "🔴 High", "alert-high"
     elif score >= 2:
@@ -102,7 +103,7 @@ def plot_combined_trends(condition):
         "Lactate": "purple", "BP_sys": "gray"
     }
     fig, ax = plt.subplots(figsize=(7, 2.5))
-    
+
     for key in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys"]:
         values = data[key][-MAX_DATA_POINTS:]
         ax.plot(timestamps, values, label=key, color=colors[key], linewidth=2)
@@ -127,10 +128,11 @@ for idx, condition in enumerate(icu_conditions):
     data = st.session_state.trend_data[condition]
     now = datetime.datetime.now().strftime("%H:%M")
     data["timestamps"].append(now)
-    for k in ["HR", "Temp", "RR", "SpO2", "Lactate", "BP_sys", "BP_dia"]:
-        data[k].append(vitals[k])
-        if len(data[k]) > MAX_DATA_POINTS:
-            data[k].pop(0)
+    for k in vitals:
+        if k in data:
+            data[k].append(vitals[k])
+            if len(data[k]) > MAX_DATA_POINTS:
+                data[k].pop(0)
     if len(data["timestamps"]) > MAX_DATA_POINTS:
         data["timestamps"].pop(0)
 
