@@ -123,7 +123,7 @@ with st.expander("📊 Cluster Insights", expanded=False):
     if len(st.session_state.trend_data["HR"]) >= 20:
         df = pd.DataFrame(st.session_state.trend_data)
         # scaler = StandardScaler()
-        X = scaler.fit_transform(df[METRICS])
+        # X = scaler.fit_transform(df[METRICS])
         kmeans = KMeans(n_clusters=3, random_state=42)
         df["Cluster"] = kmeans.fit_predict(X)
         st.write("### Clustered ICU Conditions")
