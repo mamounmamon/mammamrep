@@ -127,7 +127,7 @@ with st.expander("📊 Cluster Insights", expanded=False):
         # kmeans = KMeans(n_clusters=3, random_state=42)
         # df["Cluster"] = kmeans.fit_predict(X)
         st.write("### Clustered ICU Conditions")
-        st.bar_chart(df["Cluster"].value_counts().sort_index())
+        #st.bar_chart(df["Cluster"].value_counts().sort_index())
         st.dataframe(df[["timestamps", "Cluster"] + METRICS].tail(10))
     else:
         st.info("Waiting for enough data to perform clustering...")
