@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import random
 import datetime
-#from sklearn.cluster import KMeans
-#from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
 
@@ -50,12 +50,14 @@ def simulate_vitals():
 def update_data():
     now = datetime.datetime.now().strftime("%H:%M:%S")
     vitals = simulate_vitals()
+
     st.session_state.trend_data["timestamps"].append(now)
 
     for k, v in vitals.items():
         st.session_state.trend_data[k].append(v)
 
-    sepsis_score, ards_score = 0, 0
+    sepsis_score = 0
+    ards_score = 0
 
     if vitals["HR"] > 120 or vitals["HR"] < 60: sepsis_score += 1
     if vitals["Temp"] > 39 or vitals["Temp"] < 36: sepsis_score += 1
@@ -95,12 +97,12 @@ with st.container():
         ards = st.session_state.trend_data["ARDS_Risk"][-1]
 
         if sepsis >= 80:
-            col1.error(f"🚨 High Sepsis Risk: {sepsis}%")
+            col1.error(f"🚨 High Sepsis Risk: {sepsis}%", icon="⚠️")
         else:
             col1.success(f"Sepsis Risk: {sepsis}%")
 
         if ards >= 75:
-            col2.warning(f"⚠️ High ARDS Risk: {ards}%")
+            col2.warning(f"⚠️ High ARDS Risk: {ards}%", icon="❗")
         else:
             col2.info(f"ARDS Risk: {ards}%")
 
@@ -111,29 +113,24 @@ with st.expander("📟 Live Vitals", expanded=True):
 
         for i, (k, v) in enumerate(latest_values.items()):
             label = k.replace("_", " ")
-            color = "green"
+            delta = ""
+            delta_color = "normal"
             if (k == "SpO2" and v < 90) or (k == "HR" and (v > 120 or v < 60)) or (k == "Temp" and (v < 36 or v > 39)):
-                color = "red"
-            cols[i % 4].metric(label=label, value=str(v), delta_color=color)
+                delta_color = "inverse"
+            cols[i % 4].metric(label=label, value=str(v), delta=delta, delta_color=delta_color)
 
-# CLUSTERING
 with st.expander("📊 Cluster Insights", expanded=False):
     if len(st.session_state.trend_data["HR"]) >= 20:
-        if st.button("Run Clustering Analysis"):
-            df = pd.DataFrame(st.session_state.trend_data)
-            scaler = StandardScaler()
-            X = scaler.fit_transform(df[METRICS])
-            kmeans = KMeans(n_clusters=3, random_state=42)
-            df["Cluster"] = kmeans.fit_predict(X)
-
-            st.success("✅ Clustering Completed!")
-            st.write("### Clustered ICU Conditions")
-            st.bar_chart(df["Cluster"].value_counts().sort_index())
-            st.dataframe(df[["timestamps", "Cluster"] + METRICS].tail(10))
-        else:
-            st.info("Press 'Run Clustering Analysis' to perform cluster detection")
+        df = pd.DataFrame(st.session_state.trend_data)
+        scaler = StandardScaler()
+        X = scaler.fit_transform(df[METRICS])
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        df["Cluster"] = kmeans.fit_predict(X)
+        st.write("### Clustered ICU Conditions")
+        st.bar_chart(df["Cluster"].value_counts().sort_index())
+        st.dataframe(df[["timestamps", "Cluster"] + METRICS].tail(10))
     else:
-        st.warning("Not enough data for clustering yet. Need at least 20 samples.")
+        st.info("Waiting for enough data to perform clustering...")
 
 def draw_trend_chart(metric_list, title):
     data = st.session_state.trend_data
@@ -148,10 +145,19 @@ def draw_trend_chart(metric_list, title):
         st.pyplot(fig)
 
 with st.expander("📈 Trend Analysis Charts", expanded=False):
-    draw_trend_chart(["HR", "RR", "Temp", "SpO2"], "🫁 Respiratory & Cardiovascular")
-    draw_trend_chart(["WBC", "Lactate", "Platelets"], "🧪 Sepsis Indicators")
-    draw_trend_chart(["Creatinine", "Bilirubin", "MAP", "GCS"], "🧠 Renal/Liver Function & Consciousness")
-    draw_trend_chart(["Sepsis_Risk", "ARDS_Risk"], "⚠️ Risk Scores Over Time")
+    tab1, tab2, tab3, tab4 = st.tabs(["🫁 Resp/Cardio", "🧪 Sepsis", "🧠 Renal/Liver", "⚠️ Risks"])
+
+    with tab1:
+        draw_trend_chart(["HR", "RR", "Temp", "SpO2"], "Respiratory & Cardiovascular Metrics")
+
+    with tab2:
+        draw_trend_chart(["WBC", "Lactate", "Platelets"], "Sepsis Indicators")
+
+    with tab3:
+        draw_trend_chart(["Creatinine", "Bilirubin", "MAP", "GCS"], "Renal/Liver Function & Consciousness")
+
+    with tab4:
+        draw_trend_chart(["Sepsis_Risk", "ARDS_Risk"], "Risk Scores Over Time")
 
 with st.expander("⬇️ Export Data"):
     df = pd.DataFrame(st.session_state.trend_data)
