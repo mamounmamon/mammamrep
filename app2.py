@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import random
 import datetime
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(layout="wide", page_title="Advanced ICU Sepsis & Condition Dashboard")
 
@@ -25,7 +23,6 @@ METRICS = [
     "Glucose", "Urine_Output", "INR", "FiO2", "pH", "PaCO2"
 ]
 
-# Simulate vital signs
 def simulate_vitals():
     return {
         "HR": random.randint(60, 140),
@@ -48,7 +45,6 @@ def simulate_vitals():
         "PaCO2": round(random.uniform(25, 55), 1)
     }
 
-# Update data
 def update_data():
     now = datetime.datetime.now().strftime("%H:%M:%S")
     vitals = simulate_vitals()
@@ -86,15 +82,12 @@ def update_data():
         if len(st.session_state.trend_data[key]) > MAX_HISTORY:
             st.session_state.trend_data[key] = st.session_state.trend_data[key][-MAX_HISTORY:]
 
-# HEADER
 st.title("🧠 ICU Condition Intelligence Dashboard")
 st.caption("Live monitoring of critical ICU metrics & predictive risks")
 
-# BUTTON TO UPDATE
 if st.button("Refresh Now"):
     update_data()
 
-# RISK ALERTS
 with st.container():
     col1, col2 = st.columns(2)
     if len(st.session_state.trend_data["Sepsis_Risk"]) > 0:
@@ -111,12 +104,10 @@ with st.container():
         else:
             col2.info(f"ARDS Risk: {ards}%")
 
-# CURRENT METRICS
 with st.expander("📟 Live Vitals", expanded=True):
     cols = st.columns(4)
     if len(st.session_state.trend_data["HR"]) > 0:
         latest_values = {k: v[-1] for k, v in st.session_state.trend_data.items() if k != "timestamps"}
-
         for i, (k, v) in enumerate(latest_values.items()):
             label = k.replace("_", " ")
             color = "green"
@@ -124,21 +115,6 @@ with st.expander("📟 Live Vitals", expanded=True):
                 color = "red"
             cols[i % 4].metric(label=label, value=str(v), delta_color=color)
 
-# CLUSTERING
-with st.expander("📊 Cluster Insights", expanded=False):
-    if len(st.session_state.trend_data["HR"]) >= 20:
-        df = pd.DataFrame(st.session_state.trend_data)
-        scaler = StandardScaler()
-        X = scaler.fit_transform(df[METRICS])
-        kmeans = KMeans(n_clusters=3, random_state=42)
-        df["Cluster"] = kmeans.fit_predict(X)
-        st.write("### Clustered ICU Conditions")
-        st.bar_chart(df["Cluster"].value_counts().sort_index())
-        st.dataframe(df[["timestamps", "Cluster"] + METRICS].tail(10))
-    else:
-        st.info("Waiting for enough data to perform clustering...")
-
-# TRENDS
 def draw_trend_chart(metric_list, title):
     data = st.session_state.trend_data
     if len(data["timestamps"]) > 0:
@@ -157,7 +133,6 @@ with st.expander("📈 Trend Analysis Charts", expanded=False):
     draw_trend_chart(["Creatinine", "Bilirubin", "MAP", "GCS"], "🧠 Renal/Liver Function & Consciousness")
     draw_trend_chart(["Sepsis_Risk", "ARDS_Risk"], "⚠️ Risk Scores Over Time")
 
-# EXPORT
 with st.expander("⬇️ Export Data"):
     df = pd.DataFrame(st.session_state.trend_data)
     csv = df.to_csv(index=False).encode("utf-8")
